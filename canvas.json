@@ -1,18 +1,87 @@
 {
   "pages": [
-    { "id": "page-1", "name": "App screens" },
-    { "id": "page-2", "name": "Widgets" }
+    {
+      "id": "page-1",
+      "name": "App screens"
+    },
+    {
+      "id": "page-2",
+      "name": "Widgets"
+    }
   ],
   "artboards": [
-    { "file": "Main.dc.html", "x": 0, "y": 0, "w": 390, "h": 844, "page": "page-1", "title": "Occasions" },
-    { "file": "Empty.dc.html", "x": 490, "y": 0, "w": 390, "h": 844, "page": "page-1", "title": "Empty state" },
-    { "file": "EditOccasion.dc.html", "x": 980, "y": 0, "w": 390, "h": 844, "page": "page-1", "title": "New occasion" },
-    { "file": "WidgetConfig.dc.html", "x": 1470, "y": 0, "w": 390, "h": 844, "page": "page-1", "title": "Widget setup" },
-
-    { "file": "HomeScreen.dc.html", "x": 0, "y": 0, "w": 390, "h": 844, "page": "page-2", "title": "In place" },
-    { "file": "WidgetSizes.dc.html", "x": 490, "y": 0, "w": 880, "h": 700, "page": "page-2", "title": "Sizes" },
-    { "file": "CoverScreen.dc.html", "x": 1470, "y": 0, "w": 880, "h": 600, "page": "page-2", "title": "Cover screen" },
-    { "file": "WidgetStates.dc.html", "x": 1470, "y": 720, "w": 920, "h": 420, "page": "page-2", "title": "States" }
+    {
+      "file": "Main.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "page": "page-1",
+      "title": "Occasions"
+    },
+    {
+      "file": "Empty.dc.html",
+      "x": 490,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "page": "page-1",
+      "title": "Empty state"
+    },
+    {
+      "file": "EditOccasion.dc.html",
+      "x": 980,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "page": "page-1",
+      "title": "New occasion"
+    },
+    {
+      "file": "WidgetConfig.dc.html",
+      "x": 1470,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "page": "page-1",
+      "title": "Widget setup"
+    },
+    {
+      "file": "HomeScreen.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "page": "page-2",
+      "title": "In place"
+    },
+    {
+      "file": "WidgetSizes.dc.html",
+      "x": 490,
+      "y": 0,
+      "w": 740,
+      "h": 700,
+      "page": "page-2",
+      "title": "Sizes"
+    },
+    {
+      "file": "CoverScreen.dc.html",
+      "x": 1470,
+      "y": 0,
+      "w": 880,
+      "h": 600,
+      "page": "page-2",
+      "title": "Cover screen"
+    },
+    {
+      "file": "WidgetStates.dc.html",
+      "x": 1470,
+      "y": 720,
+      "w": 920,
+      "h": 420,
+      "page": "page-2",
+      "title": "States"
+    }
   ],
   "annotations": [
     {
@@ -32,5 +101,8 @@
       "text": "Every widget here is buildable in Glance.\n\nNo shadows, gradients, arcs or animation — Glance can't draw them. The luminous feel comes from colour alone: a saturated accent on near-black, inverting to a solid accent block on the day itself."
     }
   ],
-  "launch": { "view": "canvas", "page": "page-1" }
+  "launch": {
+    "view": "canvas",
+    "page": "page-1"
+  }
 }

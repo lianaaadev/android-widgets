@@ -65,7 +65,7 @@ class CountdownWidget : GlanceAppWidget() {
 
     override val stateDefinition = PreferencesGlanceStateDefinition
 
-    override val sizeMode = SizeMode.Responsive(setOf(Small, Medium, Wide, Cover))
+    override val sizeMode = SizeMode.Responsive(setOf(Medium, Wide, Cover))
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val repository = (context.applicationContext as CountdownApp).repository
@@ -109,7 +109,10 @@ class CountdownWidget : GlanceAppWidget() {
     }
 
     companion object {
-        val Small = DpSize(72.dp, 72.dp)
+        /**
+         * 2x2 is the floor. A 1x1 could only carry the number and a truncated word, which is
+         * not enough to tell two countdowns apart on the same home screen.
+         */
         val Medium = DpSize(168.dp, 168.dp)
         val Wide = DpSize(344.dp, 168.dp)
 
@@ -190,10 +193,10 @@ private fun numberText(state: CountdownState): String = when (state) {
 }
 
 private fun footerText(state: CountdownState): String {
-    val short = DateTimeFormatter.ofPattern("d MMM")
+    val short = DateTimeFormatter.ofPattern("d MMM yyyy")
     return when (state) {
         is CountdownState.Upcoming -> "days · ${state.target.format(short)}"
-        is CountdownState.Today -> state.target.format(DateTimeFormatter.ofPattern("d MMMM"))
+        is CountdownState.Today -> state.target.format(DateTimeFormatter.ofPattern("d MMMM yyyy"))
         is CountdownState.Past -> "days ago · ${state.target.format(short)}"
     }
 }
@@ -204,13 +207,6 @@ private fun longFooterText(state: CountdownState): String = when (state) {
     is CountdownState.Today -> state.target.format(CoverDateFormat)
     is CountdownState.Past -> "days ago\n${state.target.format(CoverDateFormat)}"
 }
-
-/**
- * The 1x1 widget has room for roughly one word, so take the first rather than cutting the title
- * at a fixed length — "Mum's Birthday" reads as "MUM'S", not "MUM'S BI".
- */
-private fun String.shortLabel(): String =
-    trim().substringBefore(' ').trimEnd(',', '.', ';', ':').take(8).uppercase()
 
 /** What a screen reader announces, in place of a bare number. */
 private fun spokenDescription(occasion: Occasion, state: CountdownState): String = when (state) {
@@ -238,35 +234,9 @@ private fun CountdownWidgetContent(occasion: Occasion, state: CountdownState) {
         .semanticsDescription(spokenDescription(occasion, state))
 
     when (LocalSize.current) {
-        CountdownWidget.Small -> SmallLayout(occasion, state, surface)
         CountdownWidget.Wide -> WideLayout(occasion, state, surface)
         CountdownWidget.Cover -> CoverLayout(occasion, state, surface)
         else -> MediumLayout(occasion, state, surface)
-    }
-}
-
-@Composable
-private fun SmallLayout(occasion: Occasion, state: CountdownState, surface: GlanceModifier) {
-    Column(modifier = surface.padding(9.dp)) {
-        Text(
-            text = numberText(state),
-            maxLines = 1,
-            style = TextStyle(
-                color = numberFor(state, Color(occasion.accentColor)),
-                fontSize = if (state is CountdownState.Today) 15.sp else 28.sp,
-                fontWeight = FontWeight.Bold,
-            ),
-        )
-        Spacer(GlanceModifier.defaultWeight())
-        Text(
-            text = occasion.title.shortLabel(),
-            maxLines = 1,
-            style = TextStyle(
-                color = titleFor(state),
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Medium,
-            ),
-        )
     }
 }
 
