@@ -320,5 +320,3 @@ Or open the project root in Android Studio.
 | Occasions | Empty state | New occasion | Widget setup |
 |:--:|:--:|:--:|:--:|
 | <img src="docs/Main_1x.png" width="210" alt="Occasion list with a Japan Trip hero card at 7 days"> | <img src="docs/Empty_1x.png" width="210" alt="Empty state reading Nothing on the horizon"> | <img src="docs/EditOccasion_1x.png" width="210" alt="New occasion form with date, colour and a live widget preview"> | <img src="docs/WidgetConfig_1x.png" width="210" alt="Widget setup screen picking which occasion to count"> |
-
-Widgets in place on a home screen: [design canvas](https://claude.ai/code/artifact/ca67420e-4d48-49c8-9c0d-5e3bc7c1bba7)
