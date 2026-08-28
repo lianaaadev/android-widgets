@@ -15,5 +15,7 @@ captures/
 # macOS
 .DS_Store
 
-# Seeded design canvas (2.5 MB, regenerated from the .dc.html artboards + canvas.json)
-countdown-widget-app.html
+# Design mockups: the .dc.html artboards, the canvas manifest, and the 2.5 MB seeded
+# canvas. Kept locally, out of the repo. The published canvas is the source of record,
+# and docs/*.png are the exported stills the README uses.
+mockup/
