@@ -1,7 +1,6 @@
 package com.liana.countdown.widget
 
 import android.appwidget.AppWidgetManager
-import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -45,10 +44,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.LaunchedEffect
-import androidx.datastore.preferences.core.Preferences
-import androidx.glance.appwidget.GlanceAppWidgetManager
-import androidx.glance.appwidget.state.updateAppWidgetState
-import androidx.glance.state.PreferencesGlanceStateDefinition
 import androidx.lifecycle.lifecycleScope
 import com.liana.countdown.CountdownApp
 import com.liana.countdown.data.Occasion
@@ -120,18 +115,6 @@ class CountdownWidgetConfigActivity : ComponentActivity() {
     }
 
     private fun resultIntent() = Intent().putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
-}
-
-/**
- * The bridge that trips people up: the configuration activity is handed an `appWidgetId`, but
- * Glance keys its state by [androidx.glance.GlanceId]. This is where the two are reconciled.
- */
-private suspend fun bindWidget(context: Context, appWidgetId: Int, occasionId: Long) {
-    val glanceId = GlanceAppWidgetManager(context).getGlanceIdBy(appWidgetId)
-    updateAppWidgetState(context, PreferencesGlanceStateDefinition, glanceId) { prefs: Preferences ->
-        prefs.toMutablePreferences().apply { this[WidgetPrefs.OccasionId] = occasionId }
-    }
-    CountdownWidget().update(context, glanceId)
 }
 
 private const val ModePick = -1L

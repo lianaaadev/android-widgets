@@ -46,6 +46,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -64,6 +65,7 @@ import com.liana.countdown.ui.theme.TextFaint
 import com.liana.countdown.ui.theme.TextPrimary
 import com.liana.countdown.ui.theme.TextSecondary
 import com.liana.countdown.ui.theme.TextTertiary
+import com.liana.countdown.widget.requestPinWidget
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
@@ -81,6 +83,8 @@ fun OccasionEditScreen(
     saveLabel: String = "Save occasion",
 ) {
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    var pinUnsupported by remember { mutableStateOf(false) }
 
     var title by remember { mutableStateOf("") }
     var date by remember { mutableStateOf(LocalDate.now().plusDays(30)) }
@@ -313,11 +317,40 @@ fun OccasionEditScreen(
                 )
                 Spacer(Modifier.size(16.dp))
                 Text(
-                    text = "This is what the widget will look like. You can place it once " +
-                        "you have saved.",
+                    text = if (occasionId == null) {
+                        "This is what the widget will look like. You can place it once " +
+                            "you have saved."
+                    } else {
+                        "Long-press your home screen to place more of these, or use the " +
+                            "button below."
+                    },
                     style = MaterialTheme.typography.bodySmall,
                     color = TextTertiary,
                 )
+            }
+
+            // Only offered for an occasion that already exists — there is nothing to bind a
+            // pinned widget to until the row has an id.
+            if (occasionId != null) {
+                Spacer(Modifier.height(20.dp))
+                SecondaryButton(
+                    label = "Add to home screen",
+                    onClick = {
+                        if (!requestPinWidget(context, occasionId)) {
+                            pinUnsupported = true
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                if (pinUnsupported) {
+                    Spacer(Modifier.height(10.dp))
+                    Text(
+                        text = "This launcher cannot place widgets for you. Long-press an " +
+                            "empty spot on your home screen and pick Countdown.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextTertiary,
+                    )
+                }
             }
         }
 

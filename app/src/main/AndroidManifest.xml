@@ -75,6 +75,11 @@
                 android:resource="@xml/samsung_countdown_widget_info" />
         </receiver>
 
+        <!-- Fired by the launcher once a pinned widget has actually been placed. -->
+        <receiver
+            android:name=".widget.WidgetPinnedReceiver"
+            android:exported="false" />
+
         <!--
           Everything that can invalidate a rendered countdown. ACTION_DATE_CHANGED is
           deliberately absent: it is not reliably delivered to manifest-registered receivers
