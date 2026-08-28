@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!--
+      No SCHEDULE_EXACT_ALARM / USE_EXACT_ALARM. The daily tick is an inexact alarm, which needs
+      no permission and keeps the app clear of Google Play's exact-alarm policy.
+    -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+    <application
+        android:name=".CountdownApp"
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.Countdown">
+
+        <activity
+            android:name=".ui.MainActivity"
+            android:exported="true"
+            android:label="@string/app_name">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Shown by the launcher when a widget is placed, and again to repoint an orphan. -->
+        <activity
+            android:name=".widget.CountdownWidgetConfigActivity"
+            android:exported="true"
+            android:label="@string/configure_widget"
+            android:theme="@style/Theme.Countdown">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
+
+        <receiver
+            android:name=".widget.CountdownWidgetReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/countdown_widget_info" />
+        </receiver>
+
+        <!--
+          Samsung Flex Window (Galaxy Z Flip cover screen).
+
+          The cover screen does not surface arbitrary widgets: an app has to opt in with the
+          second, Samsung-specific meta-data below, which is why the cover screen's widget list
+          is mostly Samsung's own plus a handful of others. Documented at
+          https://developer.samsung.com/galaxy-z/flex_window.html
+
+          That documentation is Flip 5 / One UI 5.1.1 era. Verify on the target device — there is
+          no cover screen in the emulator, so this declaration cannot be tested any other way.
+        -->
+        <receiver
+            android:name=".widget.CountdownCoverWidgetReceiver"
+            android:exported="true"
+            android:label="@string/cover_widget_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/countdown_cover_widget_info" />
+            <meta-data
+                android:name="com.samsung.android.appwidget.provider"
+                android:resource="@xml/samsung_countdown_widget_info" />
+        </receiver>
+
+        <!--
+          Everything that can invalidate a rendered countdown. ACTION_DATE_CHANGED is
+          deliberately absent: it is not reliably delivered to manifest-registered receivers
+          from Android 8, so the daily alarm carries the rollover instead.
+        -->
+        <receiver
+            android:name=".work.MidnightReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.liana.countdown.action.TICK" />
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
+    </application>
+
+</manifest>

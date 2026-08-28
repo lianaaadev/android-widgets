@@ -14,3 +14,6 @@ captures/
 
 # macOS
 .DS_Store
+
+# Seeded design canvas (2.5 MB, regenerated from the .dc.html artboards + canvas.json)
+countdown-widget-app.html

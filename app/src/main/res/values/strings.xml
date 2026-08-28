@@ -1,0 +1,12 @@
+<resources>
+    <string name="app_name">Countdown</string>
+    <string name="configure_widget">Choose an occasion</string>
+    <string name="widget_description">Days until something you are waiting for.</string>
+    <string name="cover_widget_label">Countdown (cover screen)</string>
+    <string name="cover_widget_description">Days until something you are waiting for, on the cover screen.</string>
+
+    <!-- Shown only in the widget picker's preview. -->
+    <string name="preview_title">MUM\'S BIRTHDAY</string>
+    <string name="preview_days">46</string>
+    <string name="preview_footer">days · 12 Oct</string>
+</resources>

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Losing every occasion on a phone migration is the kind of thing that earns one-star reviews,
+  so the database is explicitly included. Widget bindings live in Glance's DataStore, which is
+  deliberately left out: appWidgetIds are not stable across devices, so restoring them would
+  point widgets at nothing.
+-->
+<full-backup-content>
+    <include domain="database" path="countdown.db" />
+    <include domain="database" path="countdown.db-wal" />
+    <include domain="database" path="countdown.db-shm" />
+</full-backup-content>
