@@ -180,6 +180,9 @@ private fun footerFor(state: CountdownState): ColorProvider = when (state) {
 
 // --- content ---------------------------------------------------------------------------------
 
+/** The cover screen has room for the full date, and a long countdown needs the year to read. */
+private val CoverDateFormat: DateTimeFormatter = DateTimeFormatter.ofPattern("EEEE d MMMM yyyy")
+
 private fun numberText(state: CountdownState): String = when (state) {
     is CountdownState.Upcoming -> state.days.toString()
     is CountdownState.Today -> "TODAY"
@@ -242,11 +245,11 @@ private fun SmallLayout(occasion: Occasion, state: CountdownState, surface: Glan
         )
         Spacer(GlanceModifier.defaultWeight())
         Text(
-            text = occasion.title.take(6).uppercase(),
+            text = occasion.title.take(8).uppercase(),
             maxLines = 1,
             style = TextStyle(
                 color = titleFor(state),
-                fontSize = 9.sp,
+                fontSize = 10.sp,
                 fontWeight = FontWeight.Medium,
             ),
         )
@@ -261,8 +264,8 @@ private fun MediumLayout(occasion: Occasion, state: CountdownState, surface: Gla
             maxLines = 2,
             style = TextStyle(
                 color = titleFor(state),
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Medium,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
             ),
         )
         Spacer(GlanceModifier.defaultWeight())
@@ -306,7 +309,7 @@ private fun WideLayout(occasion: Occasion, state: CountdownState, surface: Glanc
                 maxLines = 2,
                 style = TextStyle(
                     color = titleFor(state),
-                    fontSize = 16.sp,
+                    fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
                 ),
             )
@@ -326,16 +329,18 @@ private fun CoverLayout(occasion: Occasion, state: CountdownState, surface: Glan
         Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.Vertical.CenterVertically) {
             Text(
                 text = occasion.title.uppercase(),
-                maxLines = 1,
+                // There is plenty of vertical room on the Flex Window, so a long name wraps
+                // rather than being cut off.
+                maxLines = 2,
                 style = TextStyle(
                     color = titleFor(state),
-                    fontSize = 15.sp,
+                    fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
                 ),
                 modifier = GlanceModifier.defaultWeight(),
             )
             occasion.emoji?.let {
-                Text(text = it, style = TextStyle(fontSize = 20.sp))
+                Text(text = it, style = TextStyle(fontSize = 22.sp))
             }
         }
         Spacer(GlanceModifier.defaultWeight())
@@ -351,9 +356,9 @@ private fun CoverLayout(occasion: Occasion, state: CountdownState, surface: Glan
         Spacer(GlanceModifier.defaultWeight())
         Text(
             text = when (state) {
-                is CountdownState.Upcoming -> "days until ${state.target.format(DateTimeFormatter.ofPattern("EEEE d MMMM"))}"
-                is CountdownState.Today -> state.target.format(DateTimeFormatter.ofPattern("EEEE d MMMM"))
-                is CountdownState.Past -> "days ago · ${state.target.format(DateTimeFormatter.ofPattern("d MMMM"))}"
+                is CountdownState.Upcoming -> "days until ${state.target.format(CoverDateFormat)}"
+                is CountdownState.Today -> state.target.format(CoverDateFormat)
+                is CountdownState.Past -> "days ago · ${state.target.format(CoverDateFormat)}"
             },
             maxLines = 1,
             style = TextStyle(color = footerFor(state), fontSize = 14.sp),
