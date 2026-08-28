@@ -198,6 +198,20 @@ private fun footerText(state: CountdownState): String {
     }
 }
 
+/** The 4x2 and the cover screen are wide enough for the day of the week and the year. */
+private fun longFooterText(state: CountdownState): String = when (state) {
+    is CountdownState.Upcoming -> "days until\n${state.target.format(CoverDateFormat)}"
+    is CountdownState.Today -> state.target.format(CoverDateFormat)
+    is CountdownState.Past -> "days ago\n${state.target.format(CoverDateFormat)}"
+}
+
+/**
+ * The 1x1 widget has room for roughly one word, so take the first rather than cutting the title
+ * at a fixed length — "Mum's Birthday" reads as "MUM'S", not "MUM'S BI".
+ */
+private fun String.shortLabel(): String =
+    trim().substringBefore(' ').trimEnd(',', '.', ';', ':').take(8).uppercase()
+
 /** What a screen reader announces, in place of a bare number. */
 private fun spokenDescription(occasion: Occasion, state: CountdownState): String = when (state) {
     is CountdownState.Upcoming -> "${state.days} days until ${occasion.title}"
@@ -245,7 +259,7 @@ private fun SmallLayout(occasion: Occasion, state: CountdownState, surface: Glan
         )
         Spacer(GlanceModifier.defaultWeight())
         Text(
-            text = occasion.title.take(8).uppercase(),
+            text = occasion.title.shortLabel(),
             maxLines = 1,
             style = TextStyle(
                 color = titleFor(state),
@@ -315,8 +329,8 @@ private fun WideLayout(occasion: Occasion, state: CountdownState, surface: Glanc
             )
             Spacer(GlanceModifier.height(8.dp))
             Text(
-                text = footerText(state),
-                maxLines = 2,
+                text = longFooterText(state),
+                maxLines = 3,
                 style = TextStyle(color = footerFor(state), fontSize = 12.sp),
             )
         }
@@ -355,11 +369,7 @@ private fun CoverLayout(occasion: Occasion, state: CountdownState, surface: Glan
         )
         Spacer(GlanceModifier.defaultWeight())
         Text(
-            text = when (state) {
-                is CountdownState.Upcoming -> "days until ${state.target.format(CoverDateFormat)}"
-                is CountdownState.Today -> state.target.format(CoverDateFormat)
-                is CountdownState.Past -> "days ago · ${state.target.format(CoverDateFormat)}"
-            },
+            text = longFooterText(state).replace('\n', ' '),
             maxLines = 1,
             style = TextStyle(color = footerFor(state), fontSize = 14.sp),
         )
