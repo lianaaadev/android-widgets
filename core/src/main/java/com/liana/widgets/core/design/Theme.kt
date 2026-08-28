@@ -1,4 +1,4 @@
-package com.liana.countdown.ui.theme
+package com.liana.widgets.core.design
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
@@ -9,18 +9,8 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
-val Ground = Color(0xFF0E0E12)
-val SurfaceCard = Color(0xFF15151C)
-val SurfaceHigh = Color(0xFF1E1E27)
-val BorderSubtle = Color(0xFF24242F)
-val TextPrimary = Color(0xFFF5F5F7)
-val TextSecondary = Color(0xFF9C9CAB)
-val TextTertiary = Color(0xFF63636F)
-val TextFaint = Color(0xFF4E4E5A)
-val Ink = Color(0xFF14141A)
-
 private val DarkColors = darkColorScheme(
-    primary = Color(0xFFFFB43C),
+    primary = Color(AccentPalette.Default),
     onPrimary = Ink,
     background = Ground,
     onBackground = TextPrimary,
@@ -29,7 +19,7 @@ private val DarkColors = darkColorScheme(
     surfaceVariant = SurfaceHigh,
     onSurfaceVariant = TextSecondary,
     outline = BorderSubtle,
-    error = Color(0xFFFF7A6B),
+    error = Color(AccentPalette.Coral),
     onError = Ink,
 )
 
@@ -38,7 +28,7 @@ private val DarkColors = darkColorScheme(
  * up downloadable fonts); until then this leans on the platform's heaviest weight, which keeps
  * the hierarchy even though the numerals are a little less distinctive.
  */
-private val CountdownTypography = Typography(
+private val WidgetTypography = Typography(
     displayLarge = TextStyle(fontWeight = FontWeight.Black, fontSize = 96.sp, letterSpacing = (-3).sp),
     displayMedium = TextStyle(fontWeight = FontWeight.Black, fontSize = 56.sp, letterSpacing = (-2).sp),
     headlineMedium = TextStyle(fontWeight = FontWeight.Black, fontSize = 26.sp, letterSpacing = (-0.5).sp),
@@ -50,11 +40,12 @@ private val CountdownTypography = Typography(
     bodySmall = TextStyle(fontWeight = FontWeight.Normal, fontSize = 12.sp),
 )
 
+/** The shared look for every app in this repo. Dark only — the widgets are designed against it. */
 @Composable
-fun CountdownTheme(content: @Composable () -> Unit) {
+fun WidgetTheme(content: @Composable () -> Unit) {
     MaterialTheme(
         colorScheme = DarkColors,
-        typography = CountdownTypography,
+        typography = WidgetTypography,
         content = content,
     )
 }

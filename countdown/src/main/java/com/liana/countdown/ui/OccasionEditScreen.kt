@@ -51,21 +51,23 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.liana.countdown.data.AccentPalette
+import com.liana.widgets.core.design.AccentPalette
 import com.liana.countdown.data.Occasion
 import com.liana.countdown.data.OccasionMarks
 import com.liana.countdown.data.OccasionRepository
 import com.liana.countdown.domain.Countdown
 import com.liana.countdown.domain.CountdownState
-import com.liana.countdown.ui.theme.BorderSubtle
-import com.liana.countdown.ui.theme.Ink
-import com.liana.countdown.ui.theme.SurfaceCard
-import com.liana.countdown.ui.theme.SurfaceHigh
-import com.liana.countdown.ui.theme.TextFaint
-import com.liana.countdown.ui.theme.TextPrimary
-import com.liana.countdown.ui.theme.TextSecondary
-import com.liana.countdown.ui.theme.TextTertiary
-import com.liana.countdown.widget.requestPinWidget
+import com.liana.widgets.core.design.BorderSubtle
+import com.liana.widgets.core.design.Ink
+import com.liana.widgets.core.design.PrimaryButton
+import com.liana.widgets.core.design.SecondaryButton
+import com.liana.widgets.core.design.SurfaceCard
+import com.liana.widgets.core.design.SurfaceHigh
+import com.liana.widgets.core.design.TextFaint
+import com.liana.widgets.core.design.TextPrimary
+import com.liana.widgets.core.design.TextSecondary
+import com.liana.widgets.core.design.TextTertiary
+import com.liana.countdown.widget.requestPinCountdownWidget
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
@@ -336,7 +338,7 @@ fun OccasionEditScreen(
                 SecondaryButton(
                     label = "Add to home screen",
                     onClick = {
-                        if (!requestPinWidget(context, occasionId)) {
+                        if (!requestPinCountdownWidget(context, occasionId)) {
                             pinUnsupported = true
                         }
                     },
