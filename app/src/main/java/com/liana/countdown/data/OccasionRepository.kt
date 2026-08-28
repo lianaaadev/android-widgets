@@ -19,6 +19,8 @@ class OccasionRepository(
 
     suspend fun getById(id: Long): Occasion? = dao.getById(id)
 
+    fun observeById(id: Long): Flow<Occasion?> = dao.observeById(id)
+
     suspend fun save(occasion: Occasion): Long {
         val id = if (occasion.id == 0L) {
             dao.insert(occasion)

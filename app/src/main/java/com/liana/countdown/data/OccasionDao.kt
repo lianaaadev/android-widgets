@@ -20,6 +20,10 @@ interface OccasionDao {
     @Query("SELECT * FROM occasions WHERE id = :id")
     suspend fun getById(id: Long): Occasion?
 
+    /** Used by the widget, so an edit reaches a widget whose Glance session is still alive. */
+    @Query("SELECT * FROM occasions WHERE id = :id")
+    fun observeById(id: Long): Flow<Occasion?>
+
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insert(occasion: Occasion): Long
 

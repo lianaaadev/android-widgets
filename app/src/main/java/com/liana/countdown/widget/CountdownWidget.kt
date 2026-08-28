@@ -4,6 +4,9 @@ import android.appwidget.AppWidgetManager
 import android.content.Context
 import android.content.Intent
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
@@ -19,9 +22,9 @@ import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.provideContent
-import androidx.glance.appwidget.state.getAppWidgetState
 import androidx.glance.background
 import androidx.glance.color.ColorProvider as DayNight
+import androidx.glance.currentState
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Box
 import androidx.glance.layout.Column
@@ -45,6 +48,8 @@ import com.liana.countdown.data.Occasion
 import com.liana.countdown.domain.Countdown
 import com.liana.countdown.domain.CountdownState
 import com.liana.countdown.ui.MainActivity
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -64,21 +69,41 @@ class CountdownWidget : GlanceAppWidget() {
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val repository = (context.applicationContext as CountdownApp).repository
-        val prefs = getAppWidgetState(context, PreferencesGlanceStateDefinition, id)
-        val occasionId = prefs[WidgetPrefs.OccasionId]
-        val occasion = occasionId?.let { repository.getById(it) }?.takeUnless { it.isDeleted }
         val appWidgetId = GlanceAppWidgetManager(context).getAppWidgetId(id)
 
-        // Resolved once per render, against the reader's own time zone.
-        val state = occasion?.let {
-            Countdown.stateFor(it.date, it.recurringYearly, LocalDate.now())
-        }
-
         provideContent {
-            if (occasion == null || state == null) {
-                OrphanedWidget(appWidgetId)
-            } else {
-                CountdownWidgetContent(occasion, state)
+            // Read the binding from inside the composition, never above it. This body runs once
+            // per Glance session, and a widget dropped from the picker starts its session
+            // *before* the configuration activity has written the occasion id. A later update()
+            // only refreshes LocalState and recomposes — it does not re-run provideGlance — so
+            // anything captured out here would stay stuck at its pre-configuration value.
+            val occasionId = currentState(WidgetPrefs.OccasionId)
+
+            val data by remember(occasionId) {
+                if (occasionId == null) {
+                    flowOf(WidgetData.Unbound)
+                } else {
+                    repository.observeById(occasionId).map { occasion ->
+                        if (occasion == null || occasion.isDeleted) {
+                            WidgetData.Unbound
+                        } else {
+                            WidgetData.Ready(occasion)
+                        }
+                    }
+                }
+            }.collectAsState(initial = WidgetData.Loading)
+
+            when (val current = data) {
+                WidgetData.Loading -> PlaceholderWidget()
+                WidgetData.Unbound -> OrphanedWidget(appWidgetId)
+                is WidgetData.Ready -> CountdownWidgetContent(
+                    occasion = current.occasion,
+                    state = Countdown.stateFor(
+                        current.occasion.date,
+                        current.occasion.recurringYearly,
+                        LocalDate.now(),
+                    ),
+                )
             }
         }
     }
@@ -91,6 +116,16 @@ class CountdownWidget : GlanceAppWidget() {
         /** Samsung's documented Flex Window size for the Galaxy Z Flip cover screen. */
         val Cover = DpSize(352.dp, 339.dp)
     }
+}
+
+/**
+ * Distinguishes "we have not loaded yet" from "there is nothing to show". Without the first,
+ * every widget flashes "Occasion removed" for a frame before its data arrives.
+ */
+private sealed interface WidgetData {
+    data object Loading : WidgetData
+    data object Unbound : WidgetData
+    data class Ready(val occasion: Occasion) : WidgetData
 }
 
 /**
@@ -326,9 +361,21 @@ private fun CoverLayout(occasion: Occasion, state: CountdownState, surface: Glan
     }
 }
 
+/** Shown for the frame or two before the occasion arrives; deliberately says nothing. */
+@Composable
+private fun PlaceholderWidget() {
+    Box(
+        modifier = GlanceModifier
+            .fillMaxSize()
+            .background(DayNight(day = PastSurfaceDay, night = SurfaceNight))
+            .cornerRadius(16.dp),
+        contentAlignment = Alignment.Center,
+    ) {}
+}
+
 /**
- * The occasion behind this widget was deleted. The widget stays put and offers to be pointed at
- * something else, rather than going blank or disappearing.
+ * The occasion behind this widget was deleted, or it was never bound to one. The widget stays
+ * put and offers to be pointed at something else, rather than going blank or disappearing.
  */
 @Composable
 private fun OrphanedWidget(appWidgetId: Int) {
