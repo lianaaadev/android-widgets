@@ -1,4 +1,4 @@
-package com.liana.countdown.ui
+package com.liana.widgets.core.design
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -15,9 +15,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import com.liana.countdown.ui.theme.BorderSubtle
-import com.liana.countdown.ui.theme.Ink
-import com.liana.countdown.ui.theme.TextSecondary
 
 @Composable
 fun PrimaryButton(

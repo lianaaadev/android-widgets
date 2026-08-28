@@ -20,5 +20,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Countdown"
-include(":app")
+rootProject.name = "Widgets"
+include(":core")
+include(":countdown")

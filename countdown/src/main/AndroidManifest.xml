@@ -3,9 +3,9 @@
 
     <!--
       No SCHEDULE_EXACT_ALARM / USE_EXACT_ALARM. The daily tick is an inexact alarm, which needs
-      no permission and keeps the app clear of Google Play's exact-alarm policy.
+      no permission and keeps the app clear of Google Play's exact-alarm policy. The
+      RECEIVE_BOOT_COMPLETED the alarm does need is declared by :core and merged in here.
     -->
-    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application
         android:name=".CountdownApp"
@@ -77,7 +77,7 @@
 
         <!-- Fired by the launcher once a pinned widget has actually been placed. -->
         <receiver
-            android:name=".widget.WidgetPinnedReceiver"
+            android:name=".widget.CountdownPinnedReceiver"
             android:exported="false" />
 
         <!--

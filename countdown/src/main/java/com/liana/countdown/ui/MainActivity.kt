@@ -15,7 +15,7 @@ import androidx.glance.appwidget.updateAll
 import androidx.lifecycle.lifecycleScope
 import com.liana.countdown.CountdownApp
 import com.liana.countdown.data.OccasionRepository
-import com.liana.countdown.ui.theme.CountdownTheme
+import com.liana.widgets.core.design.WidgetTheme
 import com.liana.countdown.widget.CountdownWidget
 import kotlinx.coroutines.launch
 
@@ -27,7 +27,7 @@ class MainActivity : ComponentActivity() {
         val deepLinked = intent.getLongExtra(EXTRA_OCCASION_ID, 0L).takeIf { it > 0L }
 
         setContent {
-            CountdownTheme {
+            WidgetTheme {
                 Surface(color = MaterialTheme.colorScheme.background) {
                     CountdownRoot(repository, deepLinked)
                 }

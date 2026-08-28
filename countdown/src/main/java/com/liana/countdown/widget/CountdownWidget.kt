@@ -8,7 +8,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceId
@@ -48,6 +47,11 @@ import com.liana.countdown.data.Occasion
 import com.liana.countdown.domain.Countdown
 import com.liana.countdown.domain.CountdownState
 import com.liana.countdown.ui.MainActivity
+import com.liana.widgets.core.design.Ink
+import com.liana.widgets.core.design.SurfaceCard
+import com.liana.widgets.core.design.TextSecondary
+import com.liana.widgets.core.design.TextTertiary
+import com.liana.widgets.core.widget.WidgetSizes
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import java.time.LocalDate
@@ -65,7 +69,7 @@ class CountdownWidget : GlanceAppWidget() {
 
     override val stateDefinition = PreferencesGlanceStateDefinition
 
-    override val sizeMode = SizeMode.Responsive(setOf(Medium, Wide, Cover))
+    override val sizeMode = SizeMode.Responsive(setOf(WidgetSizes.Medium, WidgetSizes.Wide, WidgetSizes.Cover))
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val repository = (context.applicationContext as CountdownApp).repository
@@ -107,18 +111,6 @@ class CountdownWidget : GlanceAppWidget() {
             }
         }
     }
-
-    companion object {
-        /**
-         * 2x2 is the floor. A 1x1 could only carry the number and a truncated word, which is
-         * not enough to tell two countdowns apart on the same home screen.
-         */
-        val Medium = DpSize(168.dp, 168.dp)
-        val Wide = DpSize(344.dp, 168.dp)
-
-        /** Samsung's documented Flex Window size for the Galaxy Z Flip cover screen. */
-        val Cover = DpSize(352.dp, 339.dp)
-    }
 }
 
 /**
@@ -139,12 +131,7 @@ private fun GlanceModifier.semanticsDescription(text: String): GlanceModifier =
 
 // --- palette ---------------------------------------------------------------------------------
 
-private val SurfaceNight = Color(0xFF15151C)
-private val Ink = Color(0xFF14141A)
-private val TextNight = Color(0xFFF5F5F7)
-private val MutedNight = Color(0xFF9C9CAB)
-private val FaintNight = Color(0xFF63636F)
-
+// The neutrals come from :core; only the past-occasion greys below are countdown's own.
 private val PastSurfaceDay = Color(0xFFE7E7EB)
 private val PastSurfaceNight = Color(0xFF131319)
 private val PastNumberDay = Color(0xFF9A9AA6)
@@ -160,7 +147,7 @@ private val PastLabelNight = Color(0xFF44444E)
 private fun surfaceFor(state: CountdownState, accent: Color): ColorProvider = when (state) {
     is CountdownState.Today -> DayNight(day = accent, night = accent)
     is CountdownState.Past -> DayNight(day = PastSurfaceDay, night = PastSurfaceNight)
-    is CountdownState.Upcoming -> DayNight(day = accent, night = SurfaceNight)
+    is CountdownState.Upcoming -> DayNight(day = accent, night = SurfaceCard)
 }
 
 private fun numberFor(state: CountdownState, accent: Color): ColorProvider = when (state) {
@@ -172,13 +159,13 @@ private fun numberFor(state: CountdownState, accent: Color): ColorProvider = whe
 private fun titleFor(state: CountdownState): ColorProvider = when (state) {
     is CountdownState.Today -> DayNight(day = Ink, night = Ink)
     is CountdownState.Past -> DayNight(day = PastLabelDay, night = PastLabelNight)
-    is CountdownState.Upcoming -> DayNight(day = Ink, night = MutedNight)
+    is CountdownState.Upcoming -> DayNight(day = Ink, night = TextSecondary)
 }
 
 private fun footerFor(state: CountdownState): ColorProvider = when (state) {
     is CountdownState.Today -> DayNight(day = Ink, night = Ink)
     is CountdownState.Past -> DayNight(day = PastLabelDay, night = PastLabelNight)
-    is CountdownState.Upcoming -> DayNight(day = Ink, night = FaintNight)
+    is CountdownState.Upcoming -> DayNight(day = Ink, night = TextTertiary)
 }
 
 // --- content ---------------------------------------------------------------------------------
@@ -234,8 +221,8 @@ private fun CountdownWidgetContent(occasion: Occasion, state: CountdownState) {
         .semanticsDescription(spokenDescription(occasion, state))
 
     when (LocalSize.current) {
-        CountdownWidget.Wide -> WideLayout(occasion, state, surface)
-        CountdownWidget.Cover -> CoverLayout(occasion, state, surface)
+        WidgetSizes.Wide -> WideLayout(occasion, state, surface)
+        WidgetSizes.Cover -> CoverLayout(occasion, state, surface)
         else -> MediumLayout(occasion, state, surface)
     }
 }
@@ -352,7 +339,7 @@ private fun PlaceholderWidget() {
     Box(
         modifier = GlanceModifier
             .fillMaxSize()
-            .background(DayNight(day = PastSurfaceDay, night = SurfaceNight))
+            .background(DayNight(day = PastSurfaceDay, night = SurfaceCard))
             .cornerRadius(16.dp),
         contentAlignment = Alignment.Center,
     ) {}
@@ -385,7 +372,7 @@ private fun OrphanedWidget(appWidgetId: Int) {
         Text(
             text = "Occasion removed\nTap to choose another",
             style = TextStyle(
-                color = DayNight(day = PastLabelDay, night = MutedNight),
+                color = DayNight(day = PastLabelDay, night = TextSecondary),
                 fontSize = 12.sp,
                 textAlign = TextAlign.Center,
             ),

@@ -51,15 +51,15 @@ import com.liana.countdown.data.OccasionRepository
 import com.liana.countdown.domain.Countdown
 import com.liana.countdown.domain.CountdownState
 import com.liana.countdown.ui.OccasionEditScreen
-import com.liana.countdown.ui.PrimaryButton
-import com.liana.countdown.ui.SecondaryButton
-import com.liana.countdown.ui.theme.BorderSubtle
-import com.liana.countdown.ui.theme.CountdownTheme
-import com.liana.countdown.ui.theme.SurfaceCard
-import com.liana.countdown.ui.theme.SurfaceHigh
-import com.liana.countdown.ui.theme.TextPrimary
-import com.liana.countdown.ui.theme.TextSecondary
-import com.liana.countdown.ui.theme.TextTertiary
+import com.liana.widgets.core.design.BorderSubtle
+import com.liana.widgets.core.design.PrimaryButton
+import com.liana.widgets.core.design.SecondaryButton
+import com.liana.widgets.core.design.SurfaceCard
+import com.liana.widgets.core.design.SurfaceHigh
+import com.liana.widgets.core.design.TextPrimary
+import com.liana.widgets.core.design.TextSecondary
+import com.liana.widgets.core.design.TextTertiary
+import com.liana.widgets.core.design.WidgetTheme
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -94,7 +94,7 @@ class CountdownWidgetConfigActivity : ComponentActivity() {
         val repository = (application as CountdownApp).repository
 
         setContent {
-            CountdownTheme {
+            WidgetTheme {
                 Surface(color = MaterialTheme.colorScheme.background) {
                     ConfigScreen(
                         repository = repository,
@@ -108,7 +108,7 @@ class CountdownWidgetConfigActivity : ComponentActivity() {
 
     private fun bindAndFinish(repository: OccasionRepository, occasionId: Long) {
         lifecycleScope.launch {
-            bindWidget(this@CountdownWidgetConfigActivity, appWidgetId, occasionId)
+            bindCountdownWidget(this@CountdownWidgetConfigActivity, appWidgetId, occasionId)
             setResult(RESULT_OK, resultIntent())
             finish()
         }

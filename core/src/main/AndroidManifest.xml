@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!--
+      Alarms scheduled by WidgetRefreshScheduler do not survive a reboot, so every consuming app
+      needs this. Declared once here and merged into each of them.
+    -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+</manifest>
