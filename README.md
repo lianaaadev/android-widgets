@@ -322,16 +322,3 @@ Or open the project root in Android Studio.
 | <img src="docs/Main_1x.png" width="210" alt="Occasion list with a Japan Trip hero card at 7 days"> | <img src="docs/Empty_1x.png" width="210" alt="Empty state reading Nothing on the horizon"> | <img src="docs/EditOccasion_1x.png" width="210" alt="New occasion form with date, colour and a live widget preview"> | <img src="docs/WidgetConfig_1x.png" width="210" alt="Widget setup screen picking which occasion to count"> |
 
 Widgets in place on a home screen: [design canvas](https://claude.ai/code/artifact/ca67420e-4d48-49c8-9c0d-5e3bc7c1bba7)
-
-## Known gaps
-
-- **Never run on a device or emulator.** It compiles, the unit tests pass, lint reports no errors
-  and the manifest and compiled resources have been inspected directly — but no screen has been
-  rendered and no widget placed. See the note above.
-- The app's own screens are dark-only. The light treatment exists only in the widget, via
-  Glance's day/night colour providers.
-- Typography drifts from the design: Archivo at weight 800 isn't bundled (the app falls back to
-  the platform's heaviest weight), and Glance supports neither letter-spacing nor `Black`.
-- The cover-screen opt-in is unverified on hardware.
-- The 2×2 and 4×2 have no per-widget appearance options yet; the accent comes from the occasion.
-- No "today's the day" notification (scoped as optional).
