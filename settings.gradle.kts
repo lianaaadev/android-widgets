@@ -23,3 +23,4 @@ dependencyResolutionManagement {
 rootProject.name = "Widgets"
 include(":core")
 include(":countdown")
+include(":health")

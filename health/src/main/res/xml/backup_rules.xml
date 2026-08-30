@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Nothing here is worth backing up. Health Connect owns every value this app displays, so a
+  restored cache would be a stale copy of data the device can simply re-read. The unit
+  preference is one enum the user can re-pick in a second.
+
+  Widget bindings live in Glance's DataStore and are deliberately excluded for the same reason
+  as countdown: appWidgetIds are not stable across devices, so restoring them points widgets at
+  nothing.
+-->
+<full-backup-content>
+    <exclude domain="file" path="." />
+    <exclude domain="sharedpref" path="." />
+</full-backup-content>

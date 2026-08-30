@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!--
+      One permission per thing we actually display, requested only when a widget asks for it.
+      An app called "Health" that asked for the union of everything behind Health Connect would
+      look like spyware, and would deserve to.
+    -->
+    <uses-permission android:name="android.permission.health.READ_WEIGHT" />
+
+    <!--
+      A separate grant, and one that lives in the system module: unavailable on Android 13 and
+      below even with the Health Connect APK installed. Check at runtime with
+      HealthConnectFeatures.FEATURE_READ_HEALTH_DATA_IN_BACKGROUND before relying on it — without
+      it the widget only refreshes while the app is open, which the app has to say plainly rather
+      than appear broken.
+    -->
+    <uses-permission android:name="android.permission.health.READ_HEALTH_DATA_IN_BACKGROUND" />
+
+    <!--
+      Deliberately NOT requested: android.permission.health.READ_HEALTH_DATA_HISTORY. Without it
+      we see the last 30 days, which comfortably contains both the current weight and the 7-day
+      comparison the trend needs. Asking for someone's entire weight history to show today's
+      figure is not a trade worth making.
+    -->
+
+    <!--
+      Package visibility. Without this, Android 11+ hides the Health Connect package from us and
+      getSdkStatus() reports it missing on a phone that has it installed.
+    -->
+    <queries>
+        <package android:name="com.google.android.apps.healthdata" />
+    </queries>
+
+    <application
+        android:name=".HealthApp"
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.Health">
+
+        <activity
+            android:name=".ui.MainActivity"
+            android:exported="true"
+            android:label="@string/app_name">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <!--
+              Android 13 and below: Health Connect shows this app's rationale by launching the
+              declaring activity with this action. Health Connect will not grant permissions to
+              an app that does not handle it, so this is not optional decoration.
+            -->
+            <intent-filter>
+                <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".ui.PrivacyActivity"
+            android:exported="false"
+            android:label="@string/privacy_title" />
+
+        <!--
+          Android 14+ replaced the rationale action above with a permission-usage intent, and
+          wants it on its own component rather than sharing the launcher activity's filter.
+          Same destination, different door.
+        -->
+        <activity-alias
+            android:name=".ui.PermissionsRationaleAlias"
+            android:exported="true"
+            android:targetActivity=".ui.PrivacyActivity"
+            android:permission="android.permission.START_VIEW_PERMISSION_USAGE">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW_PERMISSION_USAGE" />
+                <category android:name="android.intent.category.HEALTH_PERMISSIONS" />
+            </intent-filter>
+        </activity-alias>
+
+    </application>
+
+</manifest>

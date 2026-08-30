@@ -44,15 +44,21 @@ export JAVA_HOME=$(/usr/libexec/java_home -v 17)
 ./gradlew :countdown:assembleDebug
 ./gradlew :countdown:testDebugUnitTest
 ./gradlew :countdown:installDebug      # with a device or emulator attached
+
+./gradlew :health:assembleDebug
 ```
 
 Or open the project root in Android Studio.
+
+`compileSdk` is 36 across every module, because `connect-client` 1.1.0 sets `minCompileSdk=36`
+in its AAR metadata and pulls AGP 8.9.1 up with it. `targetSdk` stays at 34.
 
 ## Repo layout
 
 ```
 core/          shared library module
 countdown/     the countdown app + its README
+health/        the health app + its implementation plan
 docs/          exported design stills, per app
 mockup/        design canvas artboards — gitignored, local only
 ```
