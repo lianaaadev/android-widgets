@@ -86,14 +86,16 @@ class HealthRepository(private val context: Context) {
      * the cache exists. Only permission is written on failure, because losing it is the one
      * failure whose cause the widget can name and offer to fix.
      */
-    suspend fun refresh(now: Instant = Instant.now()): Result<Snapshot?> {
+    suspend fun refresh(now: Instant = Instant.now()): Result<Snapshot?> = guarded {
         val permission = permissionState().getOrNull()
         val granted = permission is HealthPermissionState.Granted
         cache.putPermissionGranted(granted)
 
-        if (!granted) return Result.success(null)
-
-        return read(now).onSuccess { cache.putSnapshot(it, now) }
+        if (!granted) {
+            null
+        } else {
+            read(now).getOrThrow().also { cache.putSnapshot(it, now) }
+        }
     }
 
     suspend fun setUnits(units: UnitPreference) = cache.putUnits(units)

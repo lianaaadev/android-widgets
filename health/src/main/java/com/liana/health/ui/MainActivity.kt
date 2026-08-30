@@ -21,6 +21,7 @@ import com.liana.health.data.HealthConnectSettings
 import com.liana.health.data.HealthPermissionState
 import com.liana.health.widget.WeightWidget
 import com.liana.widgets.core.design.WidgetTheme
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -82,7 +83,7 @@ class MainActivity : ComponentActivity() {
             // Still update: an uninstalled or downgraded provider changes what the widget must
             // say, and that is exactly the case where it would otherwise sit showing a number
             // it can no longer source.
-            lifecycleScope.launch { WeightWidget().updateAll(this@MainActivity) }
+            lifecycleScope.launch { pushToWidgets() }
             return
         }
 
@@ -111,7 +112,23 @@ class MainActivity : ComponentActivity() {
                 loading = false,
             )
 
+            pushToWidgets()
+        }
+    }
+
+    /**
+     * Redrawing the widgets must never take the app down with it. This runs inside
+     * lifecycleScope, where an uncaught exception is a crash rather than a logged failure, and
+     * it touches Glance's own DataStore and the AppWidget host — neither of which is under this
+     * app's control.
+     */
+    private suspend fun pushToWidgets() {
+        try {
             WeightWidget().updateAll(this@MainActivity)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            state = state.copy(error = state.error ?: "Widget update failed: $e")
         }
     }
 

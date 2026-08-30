@@ -1,7 +1,6 @@
 package com.liana.health.data
 
 import java.time.Instant
-import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
@@ -29,9 +28,14 @@ object Recency {
     fun formatDate(at: Instant, zone: ZoneId = ZoneId.systemDefault()): String =
         DayMonth.format(at.atZone(zone))
 
+    /**
+     * `LocalDate.ofInstant` would read better and is an API 34 method, which this module cannot
+     * call: minSdk is 26, and the compiler only checks against compileSdk, so it would have
+     * compiled cleanly and thrown NoSuchMethodError on any phone below Android 14.
+     */
     fun daysBetween(at: Instant, now: Instant, zone: ZoneId = ZoneId.systemDefault()): Long =
         ChronoUnit.DAYS.between(
-            LocalDate.ofInstant(at, zone),
-            LocalDate.ofInstant(now, zone),
+            at.atZone(zone).toLocalDate(),
+            now.atZone(zone).toLocalDate(),
         )
 }
