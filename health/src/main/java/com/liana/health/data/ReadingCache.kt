@@ -27,32 +27,48 @@ private val Context.healthDataStore: DataStore<Preferences> by preferencesDataSt
  * The trend being a delta rather than a chart is what keeps it that way: two readings, not a
  * history. See `health/plan.md`, "No Room, and why".
  */
-class ReadingCache(private val context: Context) {
+class ReadingCache(private val dataStore: DataStore<Preferences>) {
 
-    val state: Flow<CachedState> = context.healthDataStore.data.map { it.toCachedState() }
+    /** The app's instance. The DataStore is injected so the round-trip is unit-testable. */
+    constructor(context: Context) : this(context.healthDataStore)
 
+    val state: Flow<CachedState> = dataStore.data.map { it.toCachedState() }
+
+    /**
+     * Clearing uses `-=` rather than [androidx.datastore.preferences.core.MutablePreferences.remove].
+     *
+     * `remove` is declared to return a non-null `T` but returns null when the key is absent, so
+     * Kotlin trusts the signature and unboxes it — and any expression that ends on a `remove`
+     * call becomes a NullPointerException the moment the key was never written. That shipped
+     * once: an elvis branch ending in `remove(KeyPreviousAt)` crashed for anyone whose only
+     * reading was inside the trend window, because that is exactly when the key is absent.
+     * `minusAssign` returns Unit and has no such trap.
+     */
     suspend fun putSnapshot(snapshot: Snapshot?, readAt: Instant) {
-        context.healthDataStore.edit { prefs ->
+        dataStore.edit { prefs ->
             prefs[KeyLastReadAt] = readAt.toEpochMilli()
 
             if (snapshot == null) {
                 // A successful read that found nothing is different from a failed read: it means
                 // Health Connect genuinely holds no weight, so the stale number must go rather
                 // than linger as a value we can no longer source.
-                prefs.remove(KeyLatestValue)
-                prefs.remove(KeyLatestAt)
-                prefs.remove(KeyPreviousValue)
-                prefs.remove(KeyPreviousAt)
+                prefs -= KeyLatestValue
+                prefs -= KeyLatestAt
+                prefs -= KeyPreviousValue
+                prefs -= KeyPreviousAt
+                return@edit
+            }
+
+            prefs[KeyLatestValue] = snapshot.latest.value
+            prefs[KeyLatestAt] = snapshot.latest.at.toEpochMilli()
+
+            val previous = snapshot.previous
+            if (previous == null) {
+                prefs -= KeyPreviousValue
+                prefs -= KeyPreviousAt
             } else {
-                prefs[KeyLatestValue] = snapshot.latest.value
-                prefs[KeyLatestAt] = snapshot.latest.at.toEpochMilli()
-                snapshot.previous?.let {
-                    prefs[KeyPreviousValue] = it.value
-                    prefs[KeyPreviousAt] = it.at.toEpochMilli()
-                } ?: run {
-                    prefs.remove(KeyPreviousValue)
-                    prefs.remove(KeyPreviousAt)
-                }
+                prefs[KeyPreviousValue] = previous.value
+                prefs[KeyPreviousAt] = previous.at.toEpochMilli()
             }
         }
     }
@@ -63,11 +79,11 @@ class ReadingCache(private val context: Context) {
      * different taps.
      */
     suspend fun putPermissionGranted(granted: Boolean) {
-        context.healthDataStore.edit { it[KeyPermissionGranted] = granted }
+        dataStore.edit { it[KeyPermissionGranted] = granted }
     }
 
     suspend fun putUnits(units: UnitPreference) {
-        context.healthDataStore.edit { it[KeyUnits] = units.name }
+        dataStore.edit { it[KeyUnits] = units.name }
     }
 
     private fun Preferences.toCachedState(): CachedState {
@@ -93,7 +109,7 @@ class ReadingCache(private val context: Context) {
         return Reading(value = v, at = Instant.ofEpochMilli(t))
     }
 
-    private companion object {
+    internal companion object {
         val KeyLatestValue = doublePreferencesKey("latest_value")
         val KeyLatestAt = longPreferencesKey("latest_at")
         val KeyPreviousValue = doublePreferencesKey("previous_value")
