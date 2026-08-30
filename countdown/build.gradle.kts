@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "com.liana.countdown"
-    compileSdk = 34
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.liana.countdown"
