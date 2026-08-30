@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Sized for Samsung's Flex Window (352 x 339 dp) and categorised as a keyguard widget, which is
+  what the cover screen hosts. Paired with res/xml/samsung_health_widget_info.xml.
+-->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:description="@string/cover_widget_description"
+    android:initialLayout="@layout/glance_default_loading_layout"
+    android:minHeight="339dp"
+    android:minResizeHeight="339dp"
+    android:minResizeWidth="352dp"
+    android:minWidth="352dp"
+    android:resizeMode="horizontal|vertical"
+    android:updatePeriodMillis="0"
+    android:widgetCategory="keyguard" />

@@ -13,11 +13,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.health.connect.client.PermissionController
+import androidx.glance.appwidget.updateAll
 import androidx.lifecycle.lifecycleScope
 import com.liana.health.HealthApp
 import com.liana.health.data.HealthConnectAvailability
 import com.liana.health.data.HealthConnectSettings
 import com.liana.health.data.HealthPermissionState
+import com.liana.health.widget.WeightWidget
 import com.liana.widgets.core.design.WidgetTheme
 import kotlinx.coroutines.launch
 
@@ -77,6 +79,10 @@ class MainActivity : ComponentActivity() {
 
         if (state.availability != HealthConnectAvailability.Available) {
             state = state.copy(loading = false)
+            // Still update: an uninstalled or downgraded provider changes what the widget must
+            // say, and that is exactly the case where it would otherwise sit showing a number
+            // it can no longer source.
+            lifecycleScope.launch { WeightWidget().updateAll(this@MainActivity) }
             return
         }
 
@@ -92,7 +98,10 @@ class MainActivity : ComponentActivity() {
             }
 
             val records = repository.readWindow()
-            val snapshot = repository.read()
+            // refresh() rather than read(): it writes through to the cache the widget renders
+            // from, so opening the app is itself a refresh. Until Phase 3 brings the worker,
+            // this and a reboot are the only things that update a placed widget.
+            val snapshot = repository.refresh()
 
             state = state.copy(
                 permission = permission,
@@ -101,6 +110,8 @@ class MainActivity : ComponentActivity() {
                 error = (records.exceptionOrNull() ?: snapshot.exceptionOrNull())?.toString(),
                 loading = false,
             )
+
+            WeightWidget().updateAll(this@MainActivity)
         }
     }
 

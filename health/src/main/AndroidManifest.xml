@@ -61,6 +61,42 @@
             </intent-filter>
         </activity>
 
+        <receiver
+            android:name=".widget.WeightWidgetReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/health_widget_info" />
+        </receiver>
+
+        <!--
+          Samsung Flex Window (Galaxy Z Flip cover screen).
+
+          The cover screen does not surface arbitrary widgets: an app has to opt in with the
+          second, Samsung-specific meta-data below. Documented at
+          https://developer.samsung.com/galaxy-z/flex_window.html
+
+          That documentation is Flip 5 / One UI 5.1.1 era, and there is no cover screen in the
+          emulator, so this declaration can only be verified on the device itself.
+        -->
+        <receiver
+            android:name=".widget.WeightCoverWidgetReceiver"
+            android:exported="true"
+            android:label="@string/cover_widget_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/health_cover_widget_info" />
+            <meta-data
+                android:name="com.samsung.android.appwidget.provider"
+                android:resource="@xml/samsung_health_widget_info" />
+        </receiver>
+
         <activity
             android:name=".ui.PrivacyActivity"
             android:exported="false"
