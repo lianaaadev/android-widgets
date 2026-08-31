@@ -9,7 +9,7 @@ The widgets are the product in both cases. The apps exist to feed them.
 | Module | What it is |
 |---|---|
 | [`:countdown`](countdown/README.md) | Count down to a birthday, a flight, a lease running out. One widget per occasion, plus the Galaxy Z Flip cover screen. **Shipping.** |
-| [`:health`](health/plan.md) | Your latest weight, read from Health Connect (which is where Samsung Health puts it). Named for the door it goes through, not the one thing behind it. **Not built yet.** |
+| [`:health`](health/README.md) | Your latest weight, read from Health Connect (which is where Samsung Health puts it). Named for the door it goes through, not the one thing behind it. **Not built yet.** |
 | `:core` | The design language and the widget plumbing both apps share. Android library, no persistence. |
 
 Each app is its own APK with its own `applicationId`; they share code, not a process.
@@ -58,7 +58,7 @@ in its AAR metadata and pulls AGP 8.9.1 up with it. `targetSdk` stays at 34.
 ```
 core/          shared library module
 countdown/     the countdown app + its README
-health/        the health app + its implementation plan
+health/        the health app + its README
 docs/          exported design stills, per app
 mockup/        design canvas artboards — gitignored, local only
 ```
