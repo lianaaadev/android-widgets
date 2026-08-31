@@ -1,0 +1,177 @@
+package com.liana.health.ui
+
+import android.content.ActivityNotFoundException
+import android.content.Intent
+import android.os.Bundle
+import android.widget.Toast
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContract
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.health.connect.client.PermissionController
+import androidx.glance.appwidget.updateAll
+import androidx.lifecycle.lifecycleScope
+import com.liana.health.HealthApp
+import com.liana.health.data.HealthConnectAvailability
+import com.liana.health.data.HealthConnectSettings
+import com.liana.health.data.HealthPermissionState
+import com.liana.health.widget.WeightWidget
+import com.liana.health.work.RefreshScheduler
+import com.liana.widgets.core.design.WidgetTheme
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+
+class MainActivity : ComponentActivity() {
+
+    private var state by mutableStateOf(MainState())
+
+    private val repository by lazy { (application as HealthApp).repository }
+
+    /**
+     * Health Connect permissions do not go through the normal runtime-permission APIs — they are
+     * granted by the provider through its own contract. Registered unconditionally at
+     * construction, as Activity Result requires.
+     */
+    private val requestPermissions = registerForActivityResult(
+        PermissionController.createRequestPermissionResultContract() as
+            ActivityResultContract<Set<String>, Set<String>>
+    ) { granted ->
+        if (repository.metric.permission in granted) {
+            HealthConnectSettings.clearPrompts(this)
+        }
+        refresh()
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContent {
+            WidgetTheme {
+                Surface(color = MaterialTheme.colorScheme.background) {
+                    MainScreen(
+                        state = state,
+                        onGrant = ::requestPermissions,
+                        onOpenSettings = ::openHealthConnectSettings,
+                        onUpdateProvider = ::openProviderUpdate,
+                        onRefresh = ::refresh,
+                    )
+                }
+            }
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Permission can be revoked, and the provider updated, entirely outside this app. Both
+        // are cheap to re-check and expensive to get wrong, so they are re-read on every resume
+        // rather than cached for the life of the activity.
+        refresh()
+    }
+
+    private fun refresh() {
+        state = state.copy(
+            availability = HealthConnectAvailability.of(this),
+            promptsExhausted = HealthConnectSettings.promptsExhausted(this),
+            loading = true,
+            error = null,
+        )
+
+        if (state.availability != HealthConnectAvailability.Available) {
+            state = state.copy(loading = false)
+            // Still update: an uninstalled or downgraded provider changes what the widget must
+            // say, and that is exactly the case where it would otherwise sit showing a number
+            // it can no longer source.
+            lifecycleScope.launch { pushToWidgets() }
+            return
+        }
+
+        lifecycleScope.launch {
+            val permission = repository.permissionState().getOrElse { error ->
+                state = state.copy(loading = false, error = error.toString())
+                return@launch
+            }
+
+            if (permission !is HealthPermissionState.Granted) {
+                RefreshScheduler.cancel(this@MainActivity)
+                state = state.copy(permission = permission, loading = false, records = emptyList())
+                return@launch
+            }
+
+            // The background gate. Without that grant a backgrounded read returns nothing
+            // silently rather than failing, so the daily work would spend quota to learn nothing —
+            // and could convince the cache there is no weight. Re-evaluated on every resume,
+            // because the grant can be withdrawn in Health Connect at any time.
+            if (permission.background && permission.backgroundSupported) {
+                RefreshScheduler.schedule(this@MainActivity)
+            } else {
+                RefreshScheduler.cancel(this@MainActivity)
+            }
+
+            // One call: it writes through to the cache the widget renders from, and returns
+            // both the snapshot and the record list from a single readRecords. Opening the app
+            // is itself a refresh, which is the cheap insurance the plan asks for against a
+            // background read that has been quietly failing.
+            val refreshed = repository.refresh()
+
+            state = state.copy(
+                permission = permission,
+                records = refreshed.getOrNull()?.records.orEmpty(),
+                snapshot = refreshed.getOrNull()?.snapshot,
+                // From the cache, not from this read: an empty read is exactly when the copy
+                // needs a name, and that read has none to give.
+                sourcePackage = repository.cached.first().sourcePackage,
+                error = refreshed.exceptionOrNull()?.toString(),
+                loading = false,
+            )
+
+            pushToWidgets()
+        }
+    }
+
+    /**
+     * Redrawing the widgets must never take the app down with it. This runs inside
+     * lifecycleScope, where an uncaught exception is a crash rather than a logged failure, and
+     * it touches Glance's own DataStore and the AppWidget host — neither of which is under this
+     * app's control.
+     */
+    private suspend fun pushToWidgets() {
+        try {
+            WeightWidget().updateAll(this@MainActivity)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            state = state.copy(error = state.error ?: "Widget update failed: $e")
+        }
+    }
+
+    private fun requestPermissions() {
+        HealthConnectSettings.recordPrompt(this)
+        requestPermissions.launch(repository.requiredPermissions)
+    }
+
+    private fun openHealthConnectSettings() {
+        // Two actions, because the settings screen moved into the system module in Android 14
+        // and the older one only exists inside the provider APK. First that resolves wins.
+        val opened = HealthConnectSettings.settingsIntents().any { tryStart(it) }
+        if (!opened) {
+            Toast.makeText(this, "Could not open Health Connect", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun openProviderUpdate() {
+        if (!tryStart(HealthConnectAvailability.providerUpdateIntent())) {
+            Toast.makeText(this, "No Play Store on this device", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun tryStart(intent: Intent): Boolean = try {
+        startActivity(intent)
+        true
+    } catch (e: ActivityNotFoundException) {
+        false
+    }
+}

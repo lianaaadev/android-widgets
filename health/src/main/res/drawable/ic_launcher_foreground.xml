@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  A balance: a beam on a fulcrum. Deliberately not an arrow — the app has no opinion about which
+  way your weight should go, and the icon should not imply one either. Two solid shapes, so it
+  survives being drawn at 48dp.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#5BD1EA"
+        android:pathData="M28,40h52v7h-52z" />
+    <path
+        android:fillColor="#5BD1EA"
+        android:pathData="M54,49 L72,76 L36,76 Z" />
+</vector>

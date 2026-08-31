@@ -1,0 +1,14 @@
+<resources>
+    <string name="app_name">Health</string>
+    <string name="privacy_title">Privacy</string>
+    <string name="configure_widget">Pick a colour</string>
+
+    <string name="widget_description">Your latest weight, and how it has moved this week.</string>
+    <string name="cover_widget_label">Weight (cover screen)</string>
+    <string name="cover_widget_description">Your latest weight, on the cover screen.</string>
+
+    <!-- Shown only in the widget picker's preview. -->
+    <string name="preview_title">WEIGHT</string>
+    <string name="preview_weight">72.4</string>
+    <string name="preview_footer">kg · 2 days ago</string>
+</resources>

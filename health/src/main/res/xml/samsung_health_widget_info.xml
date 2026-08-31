@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Samsung's opt-in for the Galaxy Z Flip cover screen. display="sub_screen" is what makes the
+  widget selectable in Settings > Cover screen > Widgets. Vendor-specific and undocumented
+  outside Samsung's Flex Window page; ignored entirely on non-Samsung devices.
+-->
+<samsung-appwidget-provider display="sub_screen" />

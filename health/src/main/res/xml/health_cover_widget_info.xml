@@ -8,10 +8,10 @@
   Flip 6 / One UI 6.1.1 the cover screen can lay out several widgets in one view, and a
   widget that declares it cannot shrink below the whole window will never be one of them.
   Samsung does not prescribe these — the old 352/339 values were ours, and they were the
-  thing forbidding it. Paired with res/xml/samsung_countdown_widget_info.xml.
+  thing forbidding it. Paired with res/xml/samsung_health_widget_info.xml.
 -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
-    android:configure="com.liana.countdown.widget.CountdownWidgetConfigActivity"
+    android:configure="com.liana.health.widget.HealthWidgetConfigActivity"
     android:description="@string/cover_widget_description"
     android:initialLayout="@layout/glance_default_loading_layout"
     android:minHeight="339dp"
