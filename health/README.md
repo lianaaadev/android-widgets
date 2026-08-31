@@ -60,11 +60,55 @@ letter-spacing; `Bold` is the heaviest weight). Two bite specifically here:
 
 ## Data model
 
-Nothing here is authored by the user, so nothing here is a database entity.
+Nothing here is authored by the user, so nothing here is a database entity. `:countdown` starts
+from a Room table; this app starts from someone else's records and keeps only what it needs to
+draw when those records cannot be reached.
 
-### `HealthMetric` — `data/HealthMetric.kt`
+### What is actually pulled — `WeightRecord`
 
-The one abstraction, and the thing a second metric has to fit:
+One call, in `WeightMetric.readWindow`:
+
+```kotlin
+client.readRecords(
+    ReadRecordsRequest(
+        recordType = WeightRecord::class,
+        timeRangeFilter = TimeRangeFilter.between(now.minus(ReadWindow), now),
+        ascendingOrder = false,          // newest first
+    )
+)
+```
+
+Three fields are taken off each record and the rest is dropped on the floor:
+
+| Read from the record | Becomes | Notes |
+|---|---|---|
+| `record.weight.inKilograms` | `Reading.value` | **Always stored in kg.** Pounds is a display concern; converting on the way in would bake a preference into the cache |
+| `record.time` | `Reading.at` | An `Instant` — when the scale recorded it, not when we read it |
+| `record.metadata.dataOrigin.packageName` | `SourcedReading.sourcePackage` | Which app wrote it — see [Naming the source](#naming-the-source) |
+
+| Window | Value | Why |
+|---|---|---|
+| `ReadWindow` | 30 days | Everything visible without `READ_HEALTH_DATA_HISTORY`. One call covers both the current value and the comparison |
+| `TrendWindow` | 7 days | How far back the delta compares |
+
+Weight is **instantaneous**, so it reads with `readRecords` rather than `aggregate()`. Two apps
+writing overlapping weight is not the double-counting hazard it is for steps — a duplicate weight
+reading is still that weight, where duplicate step counts add up wrongly. That distinction is the
+whole reason the metric interface exists rather than a single hard-coded read.
+
+### The objects
+
+None of these are persisted as such; they are what the read produces and the widget consumes.
+
+| Type | Declared in | What it is |
+|---|---|---|
+| `Reading` | `HealthMetric.kt` | One number and its timestamp — `value: Double` (kg), `at: Instant` |
+| `Snapshot` | `HealthMetric.kt` | `latest: Reading` and `previous: Reading?` — the pair a trend needs, resolved in one read |
+| `Trend` | `HealthMetric.kt` | `direction: TrendDirection` and `text: String` — already formatted, in the display unit |
+| `SourcedReading` | `WeightMetric.kt` | A `Reading` plus the package that wrote it. Sits with the metric because only its raw read produces one |
+| `CachedState` | `ReadingCache.kt` | What the widget actually renders from; the cache's seven keys, rehydrated |
+
+`HealthMetric` is the one abstraction, and the thing a second metric has to fit:
 
 ```kotlin
 interface HealthMetric {
@@ -75,10 +119,6 @@ interface HealthMetric {
     fun format(reading: Reading, units: UnitPreference): String
     fun trend(snapshot: Snapshot, units: UnitPreference): Trend?
 }
-
-data class Reading(val value: Double, val at: Instant)     // value in the metric's own unit
-data class Snapshot(val latest: Reading, val previous: Reading?)
-data class Trend(val direction: TrendDirection, val text: String)
 ```
 
 `read` returns **both** readings in one call rather than exposing a second method, because Health
@@ -160,6 +200,10 @@ A plain ARGB `Int`, because DataStore does not know what a `Color` is — the sa
 `:core`'s `AccentPalette` holds `Int`s. A widget placed before this key existed falls back to the
 default rather than failing.
 
+Note what is *not* here. `:countdown` stores an occasion id per widget, because two widgets show
+different things; here every widget shows the same number, so the only per-widget property is its
+colour.
+
 ## How the data flows
 
 Health Connect is the database. The app owns a cache, and **the widget renders from the cache
@@ -181,6 +225,26 @@ That direction is load-bearing. A Health Connect read is `suspend`, throws, and 
 one that catches people — **fails silently when the app is backgrounded without the background
 grant**, returning nothing rather than an error. A render path that depended on it would produce
 blank widgets at exactly the moments people look at them.
+
+Everything goes through one repository, which is the only thing in the app that holds a
+`HealthConnectClient`:
+
+```
+                          HealthRepository
+                                  │
+        ┌─────────────────┬───────┴────────┬──────────────────┐
+        │                 │                │                  │
+    cached            refresh()     refreshIfChanged()   permissionState()
+   (Flow, no          (full read,    (changes token,      (granted? background?)
+    network)           app resume)    daily worker)
+        │                 │                │                  │
+        ▼                 ▼                ▼                  ▼
+   WeightWidget      ReadingCache ────────────────────►  MainScreen
+   (renders)         (written, then WeightWidget().updateAll())
+```
+
+Only the middle two ever touch Health Connect. `cached` is a `Flow` off DataStore and cannot
+fail, which is what makes it safe on a render path.
 
 ### Reading — the app
 
@@ -266,9 +330,91 @@ a `PackageManager` lookup: reading another app's label needs it visible to us, w
 11+ means `QUERY_ALL_PACKAGES` or a long `<queries>` list. An app that reads one number should not
 be able to enumerate what else is installed.
 
+### Writing — binding a widget to an accent
+
+The only write path in the app, and the mirror of `:countdown`'s occasion binding. There is no
+"add to home screen" route here, because there is nothing to pin *from* — one metric means the
+picker is the only entry point:
+
+```
+   launcher allocates appWidgetId
+   → HealthWidgetConfigActivity
+   → user picks an accent
+   → setResult(RESULT_OK)
+              │
+              ▼
+   bindWeightWidget(context, appWidgetId, accentColor)
+              │
+              ├─ GlanceAppWidgetManager.getGlanceIdBy(appWidgetId)
+              ├─ updateAppWidgetState { accent_color = accentColor }
+              └─ WeightWidget().update(context, glanceId)
+```
+
+The `getGlanceIdBy` line is the same awkward seam `:countdown` describes — the framework deals in
+`appWidgetId` (an `Int`), Glance keys state by `GlanceId`. Both apps cross it through `:core`'s
+`bindWidget`, so it exists in exactly one place.
+
+Nothing here writes to Health Connect. The app holds a read permission and no write permission,
+and gaining one would change what the privacy screen has to say.
+
+### What triggers a refresh
+
+| Trigger | Path | Touches Health Connect? |
+|---|---|---|
+| App resumed | `MainActivity.onResume` → `repository.refresh()` | Yes — one `readRecords` |
+| Once a day | `RefreshScheduler` → `RefreshWorker` → `refreshIfChanged()` | Usually only `getChanges` |
+| Local midnight | `DailyTickScheduler` → `DailyTickReceiver` → `updateAll()` | **No** |
+| Reboot | `BOOT_COMPLETED` (alarms don't survive one) | No |
+| Clock or time zone changed | `TIME_SET`, `TIMEZONE_CHANGED` | No |
+| App updated | `MY_PACKAGE_REPLACED` | No |
+| Accent changed | `bindWeightWidget` → `update()` | No |
+
+Five of the seven redraw the widget without asking Health Connect anything, which is the point:
+the recency line ages on its own, and ageing it is not worth a read.
+
+#### The daily worker
+
+`PeriodicWorkRequest` at one day, as unique work with `KEEP`. This started hourly and was cut:
+weight changes once a day at most, and the other two paths already cover the gaps — opening the
+app is a full read, and the midnight tick ages the recency line without any read at all.
+
+> **The unique work name is versioned** (`weight-refresh-daily`). `KEEP` means an already-enqueued
+> job wins, so changing the period alone would leave every phone that already had the old job
+> running it forever, with the new spec never applied. `RefreshScheduler.LegacyNames` retires the
+> old one. Any future change to the period needs the same treatment.
+
+**Gated on the background grant, and cancelled without it.** A backgrounded read without that
+grant returns nothing silently, so scheduling anyway would spend quota to learn nothing — and
+could convince the cache there is no weight, inventing an empty state out of a permission problem.
+
+`refreshIfChanged` uses Health Connect's **changes token** rather than re-reading records: a quiet
+day costs one `getChanges` call and no record read. Google publishes no numeric rate limits, only
+that background quotas are stricter than foreground ones and that apps should prefer changelogs
+to repeated raw reads. Expired tokens yield *no changes* rather than an error, so expiry
+re-primes — without that branch the widget would sit unchanged forever on a token nobody noticed.
+
+`IllegalStateException` is how quota exhaustion arrives, and maps to `Result.retry()` and
+exponential backoff — never `failure()`, which drops the run, and never a tight retry, which is
+what earns the block in the first place.
+
+### Dates, not durations
+
+`:countdown` has the same section under the name *Time zones*, and for the same reason: the unit
+of this app is a day, not an hour.
+
+`Recency` counts **calendar days**, not elapsed hours: a reading from 11pm last night is
+"yesterday" at 7am, not "8 hours ago". The day boundary is what people mean, and it is also what
+the midnight tick can roll over for free.
+
+`LocalDate.ofInstant` is an **API 34** method and this module's `minSdk` is 26 — it compiles
+clean against `compileSdk` 36 and throws `NoSuchMethodError` on older phones. Use
+`instant.atZone(zone).toLocalDate()`.
+
 ## Availability and permissions
 
-Four states, and most of the real work is in the states rather than the code.
+No equivalent in `:countdown`, which owns its data and needs no permission to read it. Here the
+app can fail in five distinct ways before it has a number to show, and most of the real work is
+in the states rather than the code.
 
 | # | State | Detection | What the app does |
 |---|---|---|---|
@@ -305,53 +451,6 @@ missing on a phone that has it.
 which comfortably contains both the current weight and the 7-day comparison. Asking for someone's
 entire weight history to display today's figure is not a trade worth making — and it is the
 second reason the trend is a delta rather than a chart.
-
-## What triggers a refresh
-
-| Trigger | Path | Touches Health Connect? |
-|---|---|---|
-| App resumed | `MainActivity.onResume` → `repository.refresh()` | Yes — one `readRecords` |
-| Once a day | `RefreshScheduler` → `RefreshWorker` → `refreshIfChanged()` | Usually only `getChanges` |
-| Local midnight | `DailyTickScheduler` → `DailyTickReceiver` → `updateAll()` | **No** |
-| Reboot | `BOOT_COMPLETED` (alarms don't survive one) | No |
-| Clock or time zone changed | `TIME_SET`, `TIMEZONE_CHANGED` | No |
-| App updated | `MY_PACKAGE_REPLACED` | No |
-| Accent changed | `bindWeightWidget` → `update()` | No |
-
-### The daily worker
-
-`PeriodicWorkRequest` at one day, as unique work with `KEEP`. This started hourly and was cut:
-weight changes once a day at most, and the other two paths already cover the gaps — opening the
-app is a full read, and the midnight tick ages the recency line without any read at all.
-
-> **The unique work name is versioned** (`weight-refresh-daily`). `KEEP` means an already-enqueued
-> job wins, so changing the period alone would leave every phone that already had the old job
-> running it forever, with the new spec never applied. `RefreshScheduler.LegacyNames` retires the
-> old one. Any future change to the period needs the same treatment.
-
-**Gated on the background grant, and cancelled without it.** A backgrounded read without that
-grant returns nothing silently, so scheduling anyway would spend quota to learn nothing — and
-could convince the cache there is no weight, inventing an empty state out of a permission problem.
-
-`refreshIfChanged` uses Health Connect's **changes token** rather than re-reading records: a quiet
-day costs one `getChanges` call and no record read. Google publishes no numeric rate limits, only
-that background quotas are stricter than foreground ones and that apps should prefer changelogs
-to repeated raw reads. Expired tokens yield *no changes* rather than an error, so expiry
-re-primes — without that branch the widget would sit unchanged forever on a token nobody noticed.
-
-`IllegalStateException` is how quota exhaustion arrives, and maps to `Result.retry()` and
-exponential backoff — never `failure()`, which drops the run, and never a tight retry, which is
-what earns the block in the first place.
-
-### Dates, not durations
-
-`Recency` counts **calendar days**, not elapsed hours: a reading from 11pm last night is
-"yesterday" at 7am, not "8 hours ago". The day boundary is what people mean, and it is also what
-the midnight tick can roll over for free.
-
-`LocalDate.ofInstant` is an **API 34** method and this module's `minSdk` is 26 — it compiles
-clean against `compileSdk` 36 and throws `NoSuchMethodError` on older phones. Use
-`instant.atZone(zone).toLocalDate()`.
 
 ## Widget sizes
 
@@ -454,6 +553,9 @@ health/src/main/java/com/liana/health/
 health/src/test/java/com/liana/health/    45 tests, no Android runtime needed
 ```
 
+The palette, type scale, buttons and widget-binding helpers are not here — they are `:core`'s,
+shared with `:countdown`, including the `Dimmed` greys a stale reading falls back to.
+
 ## Building
 
 ```bash
@@ -475,8 +577,9 @@ free of one.
 | `WeightMetricTest` (11) | Trend selection: irregular readings, nothing old enough, a reading that would compare with itself, and deltas rounded in the display unit |
 | `WidgetStateTest` (15) | The four states, both staleness thresholds, permission beating emptiness, and the empty state naming its source |
 | `ReadingCacheTest` (6) | The DataStore round trip, including the shape that shipped a crash |
-| `NumeralSizeTest` (4) | Pounds shrinking to fit; short readings not growing |
+| `NumeralSizeTest` (4) | Pounds shrinking to fit; short readings not growing — nested in `WidgetStateTest.kt` |
 | `RecencyTest` (3) | Calendar days rather than elapsed hours |
+| `SourceAppTest` (3) | Known packages mapped to names, unknown ones passed through |
 | `UnitPreferenceTest` (3) | Exact avoirdupois conversion, and a comma-decimal locale |
 
 ### What can only be tested on a device
@@ -487,6 +590,23 @@ free of one.
 - Whether the daily worker actually fires. WorkManager's period is a floor, not a promise, and
   Samsung's battery management stretches it. `adb shell dumpsys jobscheduler | grep com.liana.health`
   shows whether the job is even scheduled.
+
+## The look
+
+> **Stills not exported yet.** `:countdown` has `docs/countdown/*.png` embedded here; the
+> equivalent artboards for this app exist only in the local, gitignored `mockup/health/`
+> (`WidgetSizes`, `WidgetStates`, `CoverScreen`, `Main`, `Permission`, `NoData`, `Settings`,
+> `WidgetConfig`). Exporting them to `docs/health/` is what this section is waiting on.
+
+What they would show, and what the design is accountable to:
+
+- **Widget sizes** — 2×2, 4×2 and cover, in dark and light. On a light home screen the widget is
+  a solid slab of its accent with dark type; on a dark one it is a dark card with the number in
+  that accent.
+- **Widget states** — Ready with a delta, Stale greyed with no delta, NeedsPermission, and the
+  two Unavailable variants. The [four states](#the-four-widget-states--widgetwidgetstatekt) are
+  the section this illustrates.
+- **App** — the permission flow, the record list with its per-row source, and the unit toggle.
 
 ## Known unknowns
 

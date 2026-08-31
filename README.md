@@ -9,7 +9,7 @@ The widgets are the product in both cases. The apps exist to feed them.
 | Module | What it is |
 |---|---|
 | [`:countdown`](countdown/README.md) | Count down to a birthday, a flight, a lease running out. One widget per occasion, plus the Galaxy Z Flip cover screen. **Shipping.** |
-| [`:health`](health/README.md) | Your latest weight, read from Health Connect (which is where Samsung Health puts it). Named for the door it goes through, not the one thing behind it. **Not built yet.** |
+| [`:health`](health/README.md) | Your latest weight, read from Health Connect — whichever app writes it. Named for the door it goes through, not the one thing behind it. **Shipping: weight only.** More metrics to come; everything else is behind the same door. |
 | `:core` | The design language and the widget plumbing both apps share. Android library, no persistence. |
 
 Each app is its own APK with its own `applicationId`; they share code, not a process.
@@ -19,8 +19,9 @@ Each app is its own APK with its own `applicationId`; they share code, not a pro
 ```
 core/src/main/java/com/liana/widgets/core/
   design/
-    Palette.kt          Neutral tokens + AccentPalette (plain ARGB, so Room and DataStore
-                        can carry them and Glance can read them)
+    Palette.kt          Neutral tokens, Dimmed (the greys a widget falls back to when its
+                        value no longer applies), and AccentPalette (plain ARGB, so Room and
+                        DataStore can carry them and Glance can read them)
     Theme.kt            WidgetTheme — dark colour scheme and the type scale
     Components.kt       PrimaryButton, SecondaryButton
   widget/
@@ -31,7 +32,7 @@ core/src/main/java/com/liana/widgets/core/
 ```
 
 The rule for what belongs here: mechanics and design tokens, never domain. Date arithmetic stays
-in `:countdown`; Health Connect will stay in `:health`. `:core` holds no Room database and no
+in `:countdown`; Health Connect stays in `:health`. `:core` holds no Room database and no
 entities — only the app modules apply KSP.
 
 `:core` exposes Compose and Glance as `api` dependencies, since both appear in its public
@@ -46,6 +47,8 @@ export JAVA_HOME=$(/usr/libexec/java_home -v 17)
 ./gradlew :countdown:installDebug      # with a device or emulator attached
 
 ./gradlew :health:assembleDebug
+./gradlew :health:testDebugUnitTest
+./gradlew :health:installDebug
 ```
 
 Or open the project root in Android Studio.
