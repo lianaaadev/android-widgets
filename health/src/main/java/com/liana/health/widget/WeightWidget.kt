@@ -18,6 +18,7 @@ import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.provideContent
+import androidx.glance.currentState
 import androidx.glance.background
 import androidx.glance.color.ColorProvider as DayNight
 import androidx.glance.layout.Alignment
@@ -82,6 +83,12 @@ class WeightWidget : GlanceAppWidget() {
         val availability = HealthConnectAvailability.of(context)
 
         provideContent {
+            // Read the accent from inside the composition, never above it. This body runs
+            // once per Glance session, and a widget dropped from the picker starts its
+            // session before the config activity has written the colour; a later update()
+            // recomposes without re-running provideGlance, so a value captured out here
+            // would stay stuck at its pre-configuration default.
+            val accent = Color(currentState(WidgetPrefs.AccentColor) ?: WidgetPrefs.DefaultAccent)
             val cached by app.repository.cached.collectAsState(initial = null)
 
             // Null means the first DataStore emission has not landed. Distinguished from an
@@ -89,14 +96,18 @@ class WeightWidget : GlanceAppWidget() {
             // recomposition.
             when (val state = cached) {
                 null -> Placeholder()
-                else -> WeightWidgetContent(availability, state)
+                else -> WeightWidgetContent(availability, state, accent)
             }
         }
     }
 }
 
 @Composable
-private fun WeightWidgetContent(availability: HealthConnectAvailability, cached: CachedState) {
+private fun WeightWidgetContent(
+    availability: HealthConnectAvailability,
+    cached: CachedState,
+    accent: Color,
+) {
     val context = LocalContext.current
     val units = cached.units
 
@@ -115,16 +126,16 @@ private fun WeightWidgetContent(availability: HealthConnectAvailability, cached:
 
     val surface = GlanceModifier
         .fillMaxSize()
-        .background(surfaceFor(state))
+        .background(surfaceFor(state, accent))
         .cornerRadius(16.dp)
         .clickable(openApp)
         .semantics { contentDescription = spokenDescription(state, units) }
 
     when (state) {
         is WidgetState.Ready, is WidgetState.Stale -> when (LocalSize.current) {
-            WidgetSizes.Wide -> WideLayout(state, units, surface)
-            WidgetSizes.Cover -> CoverLayout(state, units, surface)
-            else -> MediumLayout(state, units, surface)
+            WidgetSizes.Wide -> WideLayout(state, units, accent, surface)
+            WidgetSizes.Cover -> CoverLayout(state, units, accent, surface)
+            else -> MediumLayout(state, units, accent, surface)
         }
         WidgetState.NeedsPermission -> MessageLayout(
             "Weight permission\nnot granted",
@@ -152,8 +163,6 @@ private fun WeightWidgetContent(availability: HealthConnectAvailability, cached:
 
 // --- palette ---------------------------------------------------------------------------------
 
-private val Accent = Color(AccentPalette.Cyan)
-
 private val StaleSurfaceDay = Color(0xFFE7E7EB)
 private val StaleSurfaceNight = Color(0xFF131319)
 private val StaleNumberDay = Color(0xFF9A9AA6)
@@ -165,14 +174,14 @@ private val StaleLabelNight = Color(0xFF44444E)
  * The block inverts, as countdown's does: a solid slab of accent on a light home screen, a dark
  * card with an accent number on a dark one.
  */
-private fun surfaceFor(state: WidgetState): ColorProvider = when (state) {
-    is WidgetState.Ready -> DayNight(day = Accent, night = SurfaceCard)
+private fun surfaceFor(state: WidgetState, accent: Color): ColorProvider = when (state) {
+    is WidgetState.Ready -> DayNight(day = accent, night = SurfaceCard)
     is WidgetState.Stale -> DayNight(day = StaleSurfaceDay, night = StaleSurfaceNight)
     else -> DayNight(day = StaleSurfaceDay, night = StaleSurfaceNight)
 }
 
-private fun numberFor(state: WidgetState): ColorProvider = when (state) {
-    is WidgetState.Ready -> DayNight(day = Ink, night = Accent)
+private fun numberFor(state: WidgetState, accent: Color): ColorProvider = when (state) {
+    is WidgetState.Ready -> DayNight(day = Ink, night = accent)
     else -> DayNight(day = StaleNumberDay, night = StaleNumberNight)
 }
 
@@ -240,7 +249,12 @@ private fun spokenDescription(state: WidgetState, units: UnitPreference): String
 }
 
 @Composable
-private fun MediumLayout(state: WidgetState, units: UnitPreference, surface: GlanceModifier) {
+private fun MediumLayout(
+    state: WidgetState,
+    units: UnitPreference,
+    accent: Color,
+    surface: GlanceModifier,
+) {
     val numeral = numeralText(state, units)
     Column(modifier = surface.padding(16.dp)) {
         Text(
@@ -254,7 +268,7 @@ private fun MediumLayout(state: WidgetState, units: UnitPreference, surface: Gla
                 text = numeral,
                 maxLines = 1,
                 style = TextStyle(
-                    color = numberFor(state),
+                    color = numberFor(state, accent),
                     fontSize = numeralSp(numeral, base = 46f).sp,
                     fontWeight = FontWeight.Bold,
                 ),
@@ -276,7 +290,12 @@ private fun MediumLayout(state: WidgetState, units: UnitPreference, surface: Gla
 }
 
 @Composable
-private fun WideLayout(state: WidgetState, units: UnitPreference, surface: GlanceModifier) {
+private fun WideLayout(
+    state: WidgetState,
+    units: UnitPreference,
+    accent: Color,
+    surface: GlanceModifier,
+) {
     val numeral = numeralText(state, units)
     Row(
         modifier = surface.padding(horizontal = 20.dp, vertical = 18.dp),
@@ -287,7 +306,7 @@ private fun WideLayout(state: WidgetState, units: UnitPreference, surface: Glanc
                 text = numeral,
                 maxLines = 1,
                 style = TextStyle(
-                    color = numberFor(state),
+                    color = numberFor(state, accent),
                     fontSize = numeralSp(numeral, base = 62f).sp,
                     fontWeight = FontWeight.Bold,
                 ),
@@ -321,7 +340,12 @@ private fun WideLayout(state: WidgetState, units: UnitPreference, surface: Glanc
 }
 
 @Composable
-private fun CoverLayout(state: WidgetState, units: UnitPreference, surface: GlanceModifier) {
+private fun CoverLayout(
+    state: WidgetState,
+    units: UnitPreference,
+    accent: Color,
+    surface: GlanceModifier,
+) {
     val numeral = numeralText(state, units)
     Column(modifier = surface.padding(28.dp)) {
         Text(
@@ -335,7 +359,7 @@ private fun CoverLayout(state: WidgetState, units: UnitPreference, surface: Glan
                 text = numeral,
                 maxLines = 1,
                 style = TextStyle(
-                    color = numberFor(state),
+                    color = numberFor(state, accent),
                     // The size that made this necessary: 138sp fits "72.4" and overflows "159.6".
                     fontSize = numeralSp(numeral, base = 116f).sp,
                     fontWeight = FontWeight.Bold,

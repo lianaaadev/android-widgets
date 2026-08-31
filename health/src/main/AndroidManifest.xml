@@ -61,6 +61,17 @@
             </intent-filter>
         </activity>
 
+        <!-- Shown by the launcher when a widget is placed, and again to recolour one. -->
+        <activity
+            android:name=".widget.HealthWidgetConfigActivity"
+            android:exported="true"
+            android:label="@string/configure_widget"
+            android:theme="@style/Theme.Health">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
+
         <receiver
             android:name=".widget.WeightWidgetReceiver"
             android:exported="true">

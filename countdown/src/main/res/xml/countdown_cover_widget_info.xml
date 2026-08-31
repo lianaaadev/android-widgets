@@ -1,15 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
   Sized for Samsung's Flex Window (352 x 339 dp) and categorised as a keyguard widget, which is
-  what the cover screen hosts. Paired with res/xml/samsung_countdown_widget_info.xml.
+  what the cover screen hosts.
+
+  minWidth/minHeight stay at the full window, which is what Samsung documents and what makes
+  this appear as a full-size cover widget. minResize* are deliberately much smaller: from
+  Flip 6 / One UI 6.1.1 the cover screen can lay out several widgets in one view, and a
+  widget that declares it cannot shrink below the whole window will never be one of them.
+  Samsung does not prescribe these — the old 352/339 values were ours, and they were the
+  thing forbidding it. Paired with res/xml/samsung_countdown_widget_info.xml.
 -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     android:configure="com.liana.countdown.widget.CountdownWidgetConfigActivity"
     android:description="@string/cover_widget_description"
     android:initialLayout="@layout/glance_default_loading_layout"
     android:minHeight="339dp"
-    android:minResizeHeight="339dp"
-    android:minResizeWidth="352dp"
+    android:minResizeHeight="150dp"
+    android:minResizeWidth="160dp"
     android:minWidth="352dp"
     android:resizeMode="horizontal|vertical"
     android:updatePeriodMillis="0"

@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  No android:configure. There is one metric and units are app-wide, so a widget dropped from the
-  picker is already fully specified. The config activity arrives in Phase 4 with the accent
-  picker, which is the first thing that genuinely varies per widget.
+  The config activity picks the accent — the one property that genuinely differs between two
+  weight widgets, since there is one metric and units are app-wide.
 -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:configure="com.liana.health.widget.HealthWidgetConfigActivity"
     android:description="@string/widget_description"
     android:initialLayout="@layout/glance_default_loading_layout"
     android:minHeight="110dp"

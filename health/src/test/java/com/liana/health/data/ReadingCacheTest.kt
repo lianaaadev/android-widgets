@@ -17,6 +17,7 @@ import java.time.Instant
 /**
  * The cache reached a phone with a bug a round trip would have caught, so it now gets one.
  */
+@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class ReadingCacheTest {
 
     @get:Rule
