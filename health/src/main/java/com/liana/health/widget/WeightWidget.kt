@@ -47,6 +47,7 @@ import com.liana.health.data.UnitPreference
 import com.liana.health.data.WeightMetric
 import com.liana.health.ui.MainActivity
 import com.liana.widgets.core.design.AccentPalette
+import com.liana.widgets.core.design.Dimmed
 import com.liana.widgets.core.design.Ink
 import com.liana.widgets.core.design.SurfaceCard
 import com.liana.widgets.core.design.TextSecondary
@@ -163,12 +164,7 @@ private fun WeightWidgetContent(
 
 // --- palette ---------------------------------------------------------------------------------
 
-private val StaleSurfaceDay = Color(0xFFE7E7EB)
-private val StaleSurfaceNight = Color(0xFF131319)
-private val StaleNumberDay = Color(0xFF9A9AA6)
-private val StaleNumberNight = Color(0xFF3A3A45)
-private val StaleLabelDay = Color(0xFF7C7C88)
-private val StaleLabelNight = Color(0xFF44444E)
+// Every colour here comes from :core. A stale reading uses the shared [Dimmed] greys.
 
 /**
  * The block inverts, as countdown's does: a solid slab of accent on a light home screen, a dark
@@ -176,23 +172,23 @@ private val StaleLabelNight = Color(0xFF44444E)
  */
 private fun surfaceFor(state: WidgetState, accent: Color): ColorProvider = when (state) {
     is WidgetState.Ready -> DayNight(day = accent, night = SurfaceCard)
-    is WidgetState.Stale -> DayNight(day = StaleSurfaceDay, night = StaleSurfaceNight)
-    else -> DayNight(day = StaleSurfaceDay, night = StaleSurfaceNight)
+    is WidgetState.Stale -> DayNight(day = Dimmed.SurfaceDay, night = Dimmed.SurfaceNight)
+    else -> DayNight(day = Dimmed.SurfaceDay, night = Dimmed.SurfaceNight)
 }
 
 private fun numberFor(state: WidgetState, accent: Color): ColorProvider = when (state) {
     is WidgetState.Ready -> DayNight(day = Ink, night = accent)
-    else -> DayNight(day = StaleNumberDay, night = StaleNumberNight)
+    else -> DayNight(day = Dimmed.NumberDay, night = Dimmed.NumberNight)
 }
 
 private fun labelFor(state: WidgetState): ColorProvider = when (state) {
     is WidgetState.Ready -> DayNight(day = Ink, night = TextSecondary)
-    else -> DayNight(day = StaleLabelDay, night = StaleLabelNight)
+    else -> DayNight(day = Dimmed.LabelDay, night = Dimmed.LabelNight)
 }
 
 private fun footerFor(state: WidgetState): ColorProvider = when (state) {
     is WidgetState.Ready -> DayNight(day = Ink, night = TextTertiary)
-    else -> DayNight(day = StaleLabelDay, night = StaleLabelNight)
+    else -> DayNight(day = Dimmed.LabelDay, night = Dimmed.LabelNight)
 }
 
 // --- content ---------------------------------------------------------------------------------
@@ -396,7 +392,7 @@ private fun MessageLayout(headline: String, detail: String, surface: GlanceModif
         Text(
             text = headline,
             style = TextStyle(
-                color = DayNight(day = StaleLabelDay, night = TextSecondary),
+                color = DayNight(day = Dimmed.LabelDay, night = TextSecondary),
                 fontSize = 13.sp,
                 textAlign = TextAlign.Center,
             ),
@@ -405,7 +401,7 @@ private fun MessageLayout(headline: String, detail: String, surface: GlanceModif
         Text(
             text = detail,
             style = TextStyle(
-                color = DayNight(day = StaleLabelDay, night = StaleLabelNight),
+                color = DayNight(day = Dimmed.LabelDay, night = Dimmed.LabelNight),
                 fontSize = 11.sp,
                 textAlign = TextAlign.Center,
             ),
@@ -419,7 +415,7 @@ private fun Placeholder() {
     Box(
         modifier = GlanceModifier
             .fillMaxSize()
-            .background(DayNight(day = StaleSurfaceDay, night = SurfaceCard))
+            .background(DayNight(day = Dimmed.SurfaceDay, night = SurfaceCard))
             .cornerRadius(16.dp)
             .fillMaxWidth(),
         contentAlignment = Alignment.Center,

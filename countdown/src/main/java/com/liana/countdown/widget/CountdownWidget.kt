@@ -47,6 +47,7 @@ import com.liana.countdown.data.Occasion
 import com.liana.countdown.domain.Countdown
 import com.liana.countdown.domain.CountdownState
 import com.liana.countdown.ui.MainActivity
+import com.liana.widgets.core.design.Dimmed
 import com.liana.widgets.core.design.Ink
 import com.liana.widgets.core.design.SurfaceCard
 import com.liana.widgets.core.design.TextSecondary
@@ -131,13 +132,7 @@ private fun GlanceModifier.semanticsDescription(text: String): GlanceModifier =
 
 // --- palette ---------------------------------------------------------------------------------
 
-// The neutrals come from :core; only the past-occasion greys below are countdown's own.
-private val PastSurfaceDay = Color(0xFFE7E7EB)
-private val PastSurfaceNight = Color(0xFF131319)
-private val PastNumberDay = Color(0xFF9A9AA6)
-private val PastNumberNight = Color(0xFF3A3A45)
-private val PastLabelDay = Color(0xFF7C7C88)
-private val PastLabelNight = Color(0xFF44444E)
+// Every colour here comes from :core. A past occasion uses the shared [Dimmed] greys.
 
 /**
  * The block inverts. On a light home screen the widget is a solid slab of the occasion's colour
@@ -146,25 +141,25 @@ private val PastLabelNight = Color(0xFF44444E)
  */
 private fun surfaceFor(state: CountdownState, accent: Color): ColorProvider = when (state) {
     is CountdownState.Today -> DayNight(day = accent, night = accent)
-    is CountdownState.Past -> DayNight(day = PastSurfaceDay, night = PastSurfaceNight)
+    is CountdownState.Past -> DayNight(day = Dimmed.SurfaceDay, night = Dimmed.SurfaceNight)
     is CountdownState.Upcoming -> DayNight(day = accent, night = SurfaceCard)
 }
 
 private fun numberFor(state: CountdownState, accent: Color): ColorProvider = when (state) {
     is CountdownState.Today -> DayNight(day = Ink, night = Ink)
-    is CountdownState.Past -> DayNight(day = PastNumberDay, night = PastNumberNight)
+    is CountdownState.Past -> DayNight(day = Dimmed.NumberDay, night = Dimmed.NumberNight)
     is CountdownState.Upcoming -> DayNight(day = Ink, night = accent)
 }
 
 private fun titleFor(state: CountdownState): ColorProvider = when (state) {
     is CountdownState.Today -> DayNight(day = Ink, night = Ink)
-    is CountdownState.Past -> DayNight(day = PastLabelDay, night = PastLabelNight)
+    is CountdownState.Past -> DayNight(day = Dimmed.LabelDay, night = Dimmed.LabelNight)
     is CountdownState.Upcoming -> DayNight(day = Ink, night = TextSecondary)
 }
 
 private fun footerFor(state: CountdownState): ColorProvider = when (state) {
     is CountdownState.Today -> DayNight(day = Ink, night = Ink)
-    is CountdownState.Past -> DayNight(day = PastLabelDay, night = PastLabelNight)
+    is CountdownState.Past -> DayNight(day = Dimmed.LabelDay, night = Dimmed.LabelNight)
     is CountdownState.Upcoming -> DayNight(day = Ink, night = TextTertiary)
 }
 
@@ -339,7 +334,7 @@ private fun PlaceholderWidget() {
     Box(
         modifier = GlanceModifier
             .fillMaxSize()
-            .background(DayNight(day = PastSurfaceDay, night = SurfaceCard))
+            .background(DayNight(day = Dimmed.SurfaceDay, night = SurfaceCard))
             .cornerRadius(16.dp),
         contentAlignment = Alignment.Center,
     ) {}
@@ -362,7 +357,7 @@ private fun OrphanedWidget(appWidgetId: Int) {
     Box(
         modifier = GlanceModifier
             .fillMaxSize()
-            .background(DayNight(day = PastSurfaceDay, night = PastSurfaceNight))
+            .background(DayNight(day = Dimmed.SurfaceDay, night = Dimmed.SurfaceNight))
             .cornerRadius(16.dp)
             .clickable(reconfigure)
             .padding(16.dp)
@@ -372,7 +367,7 @@ private fun OrphanedWidget(appWidgetId: Int) {
         Text(
             text = "Occasion removed\nTap to choose another",
             style = TextStyle(
-                color = DayNight(day = PastLabelDay, night = TextSecondary),
+                color = DayNight(day = Dimmed.LabelDay, night = TextSecondary),
                 fontSize = 12.sp,
                 textAlign = TextAlign.Center,
             ),

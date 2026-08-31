@@ -20,6 +20,28 @@ val TextFaint = Color(0xFF4E4E5A)
 val Ink = Color(0xFF14141A)
 
 /**
+ * The greys a widget falls back to when the value it shows no longer applies — a countdown that
+ * has already passed, a reading too old to trust.
+ *
+ * Both apps arrived at these same six values independently, under their own domain names
+ * (`Past*` in countdown, `Stale*` in health). They are one design decision wearing two names, so
+ * they live here instead. The names are deliberately about the *role* — surface, number, label —
+ * rather than about what made the value stale, because that part differs per app.
+ *
+ * Day and night are hand-picked rather than derived from the neutrals above: a widget sits on
+ * the user's wallpaper, not on [Ground], so the day variants are tuned against a light home
+ * screen rather than against this palette's own surfaces.
+ */
+object Dimmed {
+    val SurfaceDay = Color(0xFFE7E7EB)
+    val SurfaceNight = Color(0xFF131319)
+    val NumberDay = Color(0xFF9A9AA6)
+    val NumberNight = Color(0xFF3A3A45)
+    val LabelDay = Color(0xFF7C7C88)
+    val LabelNight = Color(0xFF44444E)
+}
+
+/**
  * The accent a user can pick per widget. Plain ARGB ints rather than Compose or Glance colours,
  * because the same value has to survive a trip through Room and through DataStore, neither of
  * which knows what a [Color] is.
