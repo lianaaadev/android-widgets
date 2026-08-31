@@ -2,6 +2,7 @@ package com.liana.health
 
 import android.app.Application
 import com.liana.health.data.HealthRepository
+import com.liana.health.work.DailyTickScheduler
 
 /**
  * Mirrors `CountdownApp`, minus the database. Countdown owns its data and needs Room; here
@@ -14,4 +15,12 @@ import com.liana.health.data.HealthRepository
 class HealthApp : Application() {
 
     val repository: HealthRepository by lazy { HealthRepository(this) }
+
+    override fun onCreate() {
+        super.onCreate()
+        // Costs nothing and touches no health data: it only makes the recency line roll over at
+        // midnight. The hourly read is scheduled separately, and only once the background grant
+        // is confirmed — see MainActivity.
+        DailyTickScheduler.schedule(this)
+    }
 }

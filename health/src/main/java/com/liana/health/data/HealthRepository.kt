@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.HealthConnectFeatures
 import androidx.health.connect.client.permission.HealthPermission
+import androidx.health.connect.client.records.WeightRecord
+import androidx.health.connect.client.request.ChangesTokenRequest
 import kotlinx.coroutines.flow.Flow
 import java.time.Instant
 import kotlin.coroutines.cancellation.CancellationException
@@ -81,28 +83,73 @@ class HealthRepository(private val context: Context) {
     /**
      * Read Health Connect and write the result to the cache the widget renders from.
      *
+     * One `readRecords` call serves both the snapshot and the record list. It used to be two —
+     * the screen asked for the window and then asked again for the snapshot — which spent twice
+     * the quota to answer the same question, and quota is the thing Phase 3 exists to respect.
+     *
      * A failed read deliberately leaves the cached reading alone: the number stays on screen and
-     * simply ages into [com.liana.health.widget.WidgetState.Stale], which is the whole reason
-     * the cache exists. Only permission is written on failure, because losing it is the one
-     * failure whose cause the widget can name and offer to fix.
+     * ages into [com.liana.health.widget.WidgetState.Stale], which is the whole reason the cache
+     * exists. Only permission is written on failure, because losing it is the one failure whose
+     * cause the widget can name and offer to fix.
      */
-    suspend fun refresh(now: Instant = Instant.now()): Result<Snapshot?> = guarded {
-        val permission = permissionState().getOrNull()
-        val granted = permission is HealthPermissionState.Granted
+    suspend fun refresh(now: Instant = Instant.now()): Result<RefreshResult> = guarded {
+        val granted = permissionState().getOrNull() is HealthPermissionState.Granted
         cache.putPermissionGranted(granted)
 
         if (!granted) {
-            null
+            RefreshResult(snapshot = null, records = emptyList())
         } else {
-            read(now).getOrThrow().also { cache.putSnapshot(it, now) }
+            val records = WeightMetric.readWindow(client, now)
+            val snapshot = WeightMetric.snapshotFrom(records, now)
+            cache.putSnapshot(snapshot, now)
+            // Only ever overwritten, never cleared. On a read that comes back empty the last
+            // known writer is still the best guess at who *should* be writing — and that empty
+            // read is exactly when the copy needs a name to offer.
+            records.firstOrNull()?.sourcePackage?.let { cache.putSource(it) }
+            RefreshResult(snapshot = snapshot, records = records)
         }
     }
 
-    suspend fun setUnits(units: UnitPreference) = cache.putUnits(units)
+    /**
+     * A background refresh that asks whether anything changed before reading anything.
+     *
+     * Google publishes no numeric rate limits, only that background quotas are stricter than
+     * foreground ones and that apps should prefer changelogs to repeated raw reads. So the
+     * common case — an hourly wake-up on a day nobody stepped on a scale — costs one
+     * `getChanges` call and no record read at all.
+     *
+     * Returns false when the caller should back off rather than treat this as a clean run.
+     */
+    suspend fun refreshIfChanged(now: Instant = Instant.now()): Result<Boolean> = guarded {
+        if (permissionState().getOrNull() !is HealthPermissionState.Granted) {
+            cache.putPermissionGranted(false)
+            return@guarded true
+        }
 
-    /** Every reading in the visible window, with the app that wrote each. For the debug screen. */
-    suspend fun readWindow(now: Instant = Instant.now()): Result<List<SourcedReading>> =
-        guarded { WeightMetric.readWindow(client, now) }
+        val token = cache.changesToken()
+        if (token == null) {
+            // First run, or the token was thrown away. Prime one and take a full reading with
+            // it, so the next run has something to compare against.
+            cache.putChangesToken(client.getChangesToken(ChangesTokenRequest(WatchedRecords)))
+            refresh(now).getOrThrow()
+            return@guarded true
+        }
+
+        val response = client.getChanges(token)
+        if (response.changesTokenExpired) {
+            // Tokens expire, and an expired one yields no changes rather than an error. Re-prime
+            // and read, or the widget would sit unchanged forever on a token nobody notices.
+            cache.putChangesToken(client.getChangesToken(ChangesTokenRequest(WatchedRecords)))
+            refresh(now).getOrThrow()
+            return@guarded true
+        }
+
+        cache.putChangesToken(response.nextChangesToken)
+        if (response.changes.isNotEmpty()) refresh(now).getOrThrow()
+        true
+    }
+
+    suspend fun setUnits(units: UnitPreference) = cache.putUnits(units)
 
     /**
      * Health Connect throws for a dozen unrelated reasons — permission revoked mid-call, the
@@ -123,3 +170,8 @@ class HealthRepository(private val context: Context) {
             Result.failure(e)
         }
 }
+
+/** One read, serving both the widget's snapshot and the app's record list. */
+data class RefreshResult(val snapshot: Snapshot?, val records: List<SourcedReading>)
+
+private val WatchedRecords = setOf(WeightRecord::class)

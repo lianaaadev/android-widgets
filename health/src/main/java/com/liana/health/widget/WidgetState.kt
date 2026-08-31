@@ -3,6 +3,7 @@ package com.liana.health.widget
 import com.liana.health.data.CachedState
 import com.liana.health.data.HealthConnectAvailability
 import com.liana.health.data.Reading
+import com.liana.health.data.SourceApp
 import com.liana.health.data.Recency
 import com.liana.health.data.Snapshot
 import com.liana.health.data.Trend
@@ -38,8 +39,11 @@ sealed interface WidgetState {
     /** Read permission is gone. Tapping opens the app at the permission step. */
     data object NeedsPermission : WidgetState
 
-    /** No provider, or a provider holding no weight at all. The two get different copy. */
-    data class Unavailable(val reason: Reason) : WidgetState {
+    /**
+     * No provider, or a provider holding no weight at all. The two get different copy, and the
+     * empty one names the app that last wrote a reading rather than guessing at one.
+     */
+    data class Unavailable(val reason: Reason, val source: String? = null) : WidgetState {
         enum class Reason { NoProvider, NoData }
     }
 }
@@ -53,6 +57,20 @@ sealed interface WidgetState {
  * today's. Worth revisiting in Phase 5 against real data rather than by reasoning.
  */
 val StaleAfter: Duration = Duration.ofDays(14)
+
+/**
+ * How long a *successful read* may be stale before the number stops being presented as current,
+ * regardless of how recent the reading itself is.
+ *
+ * These are different failures. A reading can be from this morning while every refresh since has
+ * quietly failed — a revoked background grant, an exhausted quota, a provider mid-update — and
+ * without this the widget would keep showing this morning's number as though it were confirmed.
+ *
+ * Generous on purpose: with no background grant the only refreshes are app opens, and someone who
+ * opens the app twice a week should not see a permanently greyed widget. Two days is long enough
+ * to survive normal neglect and short enough that a genuinely broken refresh shows.
+ */
+val UnconfirmedAfter: Duration = Duration.ofDays(2)
 
 /**
  * Everything the widget shows, derived from the cache plus one synchronous availability check.
@@ -77,10 +95,17 @@ fun widgetStateOf(
     if (!cached.permissionGranted) return WidgetState.NeedsPermission
 
     val snapshot = cached.snapshot
-        ?: return WidgetState.Unavailable(WidgetState.Unavailable.Reason.NoData)
+        ?: return WidgetState.Unavailable(
+            reason = WidgetState.Unavailable.Reason.NoData,
+            source = SourceApp.label(cached.sourcePackage),
+        )
 
     val age = Duration.between(snapshot.latest.at, now)
-    return if (age > StaleAfter) {
+    // A read that has never happened counts as unconfirmed: there is a cached number, but
+    // nothing has verified it. Expressed as a boolean rather than a fallback duration, which
+    // put the never-read case exactly *on* the threshold instead of past it.
+    val unconfirmed = cached.lastReadAt?.let { Duration.between(it, now) > UnconfirmedAfter } ?: true
+    return if (age > StaleAfter || unconfirmed) {
         WidgetState.Stale(
             reading = snapshot.latest,
             recency = Recency.describe(snapshot.latest.at, now, zone),

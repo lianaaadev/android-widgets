@@ -19,12 +19,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.liana.health.data.HealthConnectAvailability
 import com.liana.health.data.HealthPermissionState
 import com.liana.health.data.Recency
 import com.liana.health.data.Snapshot
+import com.liana.health.data.SourceApp
 import com.liana.health.data.SourcedReading
 import com.liana.health.data.TrendDirection
 import com.liana.health.data.UnitPreference
@@ -141,11 +144,21 @@ private fun Granted(
     if (state.snapshot != null) {
         LatestCard(state.snapshot, now)
     } else if (!state.loading) {
+        // Names the app that last wrote a reading rather than assuming one. The plan assumed
+        // Samsung Health and hard coded it here; on a real phone the writer was a smart-scale
+        // app, so the instructions pointed somewhere that could not have helped.
+        val source = SourceApp.label(state.sourcePackage)
         Statement(
             headline = "Health Connect has no weight.",
-            body = "Permission is granted, so this is almost certainly Samsung Health's sync " +
-                "switch. Open Samsung Health, then Settings, then Health Connect, turn sync on, " +
-                "and make sure Weight is ticked.",
+            body = if (source != null) {
+                "Permission is granted, so this is almost certainly a sync switch rather than " +
+                    "anything you did. Open $source and check it is still sharing weight with " +
+                    "Health Connect."
+            } else {
+                "Permission is granted, so Health Connect genuinely holds nothing. Whichever " +
+                    "app records your weight — a scale app, Samsung Health, Google Fit — needs " +
+                    "to be sharing it with Health Connect, with Weight ticked."
+            },
         )
     }
 
@@ -183,13 +196,30 @@ private fun LatestCard(snapshot: Snapshot, now: Instant) {
     val units = UnitPreference.Default
     val trend = WeightMetric.trend(snapshot, units)
 
+    // Merged and described, or a screen reader announces "LATEST", "72.4", "KG", "down 0.3 kg
+    // this week" as four unrelated fragments — the same reason the widget carries a description.
+    val spoken = buildString {
+        append("Latest weight ${WeightMetric.format(snapshot.latest, units)} ${units.suffix}, ")
+        append(Recency.describe(snapshot.latest.at, now))
+        trend?.let {
+            append(
+                when (it.direction) {
+                    TrendDirection.Up -> ", up ${it.text}"
+                    TrendDirection.Down -> ", down ${it.text}"
+                    TrendDirection.Level -> ", ${it.text}"
+                }
+            )
+        } ?: append(", no reading a week back to compare with")
+    }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(6.dp))
             .background(SurfaceCard)
             .border(1.dp, BorderSubtle, RoundedCornerShape(6.dp))
-            .padding(22.dp),
+            .padding(22.dp)
+            .semantics(mergeDescendants = true) { contentDescription = spoken },
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Text("LATEST", style = MaterialTheme.typography.labelMedium, color = Accent)
@@ -251,10 +281,10 @@ private fun RecordRow(record: SourcedReading, now: Instant) {
                 color = TextPrimary,
             )
             Text(
-                // The package name, not a friendly label. This screen exists to tell you whether
-                // the record came from Samsung Health or somewhere else, and the package is the
-                // only answer that cannot be wrong.
-                text = record.sourcePackage,
+                // The label when we know it, but always falling back to the raw package: this
+                // screen exists to tell you exactly which app wrote a record, and the package is
+                // the only answer that cannot be wrong.
+                text = SourceApp.label(record.sourcePackage) ?: record.sourcePackage,
                 style = MaterialTheme.typography.bodySmall,
                 color = TextTertiary,
             )

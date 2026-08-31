@@ -10,6 +10,7 @@ import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import java.time.Instant
 
@@ -82,6 +83,33 @@ class ReadingCache(private val dataStore: DataStore<Preferences>) {
         dataStore.edit { it[KeyPermissionGranted] = granted }
     }
 
+    /**
+     * The app that wrote the most recent reading, so the empty state can name it.
+     *
+     * Kept because the plan guessed wrong: it assumed Samsung Health writes the weight, and hard
+     * coded that into the copy. On a real phone the writer turned out to be a smart-scale app.
+     * Telling someone to check a sync toggle in an app that is not involved is worse than saying
+     * nothing, so the name comes from the data rather than from an assumption.
+     */
+    suspend fun putSource(packageName: String?) {
+        dataStore.edit { prefs ->
+            if (packageName == null) prefs -= KeySource else prefs[KeySource] = packageName
+        }
+    }
+
+    /**
+     * Health Connect's changes token. Persisted so a background run can ask "has anything
+     * changed" instead of re-reading records it already has — the documented way to stay inside
+     * a quota Google does not publish numbers for.
+     */
+    suspend fun putChangesToken(token: String?) {
+        dataStore.edit { prefs ->
+            if (token == null) prefs -= KeyChangesToken else prefs[KeyChangesToken] = token
+        }
+    }
+
+    suspend fun changesToken(): String? = dataStore.data.first()[KeyChangesToken]
+
     suspend fun putUnits(units: UnitPreference) {
         dataStore.edit { it[KeyUnits] = units.name }
     }
@@ -94,6 +122,7 @@ class ReadingCache(private val dataStore: DataStore<Preferences>) {
             },
             lastReadAt = this[KeyLastReadAt]?.let(Instant::ofEpochMilli),
             permissionGranted = this[KeyPermissionGranted] ?: false,
+            sourcePackage = this[KeySource],
             units = this[KeyUnits]
                 ?.let { name -> UnitPreference.entries.firstOrNull { it.name == name } }
                 ?: UnitPreference.Default,
@@ -117,6 +146,8 @@ class ReadingCache(private val dataStore: DataStore<Preferences>) {
         val KeyLastReadAt = longPreferencesKey("last_read_at")
         val KeyPermissionGranted = booleanPreferencesKey("permission_granted")
         val KeyUnits = stringPreferencesKey("units")
+        val KeySource = stringPreferencesKey("source_package")
+        val KeyChangesToken = stringPreferencesKey("changes_token")
     }
 }
 
@@ -126,4 +157,6 @@ data class CachedState(
     val lastReadAt: Instant? = null,
     val permissionGranted: Boolean = false,
     val units: UnitPreference = UnitPreference.Default,
+    /** Package name of whatever wrote [snapshot]'s latest reading, when we have seen one. */
+    val sourcePackage: String? = null,
 )

@@ -32,6 +32,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
@@ -152,6 +156,7 @@ private fun AccentConfigScreen(
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     AccentPalette.all.forEach { swatch ->
                         Swatch(
+                            name = accentName(swatch),
                             color = Color(swatch),
                             selected = swatch == accent,
                             onClick = { accent = swatch },
@@ -179,10 +184,26 @@ private fun AccentConfigScreen(
     }
 }
 
+/** The palette has no names of its own; a screen reader needs one per swatch. */
+private fun accentName(color: Int): String = when (color) {
+    AccentPalette.Amber -> "Amber"
+    AccentPalette.Coral -> "Coral"
+    AccentPalette.Pink -> "Pink"
+    AccentPalette.Violet -> "Violet"
+    AccentPalette.Cyan -> "Cyan"
+    AccentPalette.Lime -> "Lime"
+    else -> "Colour"
+}
+
 @Composable
-private fun Swatch(color: Color, selected: Boolean, onClick: () -> Unit) {
+private fun Swatch(name: String, color: Color, selected: Boolean, onClick: () -> Unit) {
     Box(
         modifier = Modifier
+            // A bare coloured circle announces nothing at all, so the colour has to be named.
+            .semantics {
+                contentDescription = if (selected) "$name, selected" else name
+                role = Role.RadioButton
+            }
             .size(46.dp)
             .clip(RoundedCornerShape(23.dp))
             .border(

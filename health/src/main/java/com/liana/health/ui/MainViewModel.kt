@@ -16,6 +16,8 @@ data class MainState(
     val snapshot: Snapshot? = null,
     val records: List<SourcedReading> = emptyList(),
     val promptsExhausted: Boolean = false,
+    /** Remembered across empty reads, so the empty state still has an app to name. */
+    val sourcePackage: String? = null,
     /** Non-null when a read threw. Shown verbatim: this screen exists to diagnose. */
     val error: String? = null,
     val loading: Boolean = false,

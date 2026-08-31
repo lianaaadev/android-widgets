@@ -129,6 +129,24 @@
             </intent-filter>
         </activity-alias>
 
+
+        <!--
+          Everything that can invalidate a rendered recency line. ACTION_DATE_CHANGED is
+          deliberately absent: it is not reliably delivered to manifest-registered receivers
+          from Android 8, so the daily alarm carries the rollover instead.
+        -->
+        <receiver
+            android:name=".work.DailyTickReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.liana.health.action.TICK" />
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
     </application>
 
 </manifest>

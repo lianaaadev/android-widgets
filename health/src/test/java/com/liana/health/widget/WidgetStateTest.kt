@@ -23,6 +23,8 @@ class WidgetStateTest {
         daysAgo: Long? = 2,
         previousDaysAgo: Long? = 9,
         granted: Boolean = true,
+        lastReadAt: Instant? = now,
+        sourcePackage: String? = null,
     ) = CachedState(
         snapshot = daysAgo?.let {
             Snapshot(
@@ -32,6 +34,8 @@ class WidgetStateTest {
         },
         permissionGranted = granted,
         units = UnitPreference.Kilograms,
+        lastReadAt = lastReadAt,
+        sourcePackage = sourcePackage,
     )
 
     private fun stateOf(
@@ -103,6 +107,40 @@ class WidgetStateTest {
     fun `a missing provider outranks everything, even a good cached reading`() {
         val state = stateOf(cache(), HealthConnectAvailability.NotSupported) as WidgetState.Unavailable
         assertEquals(WidgetState.Unavailable.Reason.NoProvider, state.reason)
+    }
+
+    @Test
+    fun `a fresh reading nobody has confirmed in days goes stale`() {
+        // The number is from this morning, but every refresh since has failed — a withdrawn
+        // background grant, an exhausted quota. Presenting it as current would be a claim we
+        // cannot back.
+        val state = stateOf(cache(daysAgo = 0, lastReadAt = now.minus(Duration.ofDays(3))))
+        assertTrue(state is WidgetState.Stale)
+    }
+
+    @Test
+    fun `a recent read keeps a recent reading ready`() {
+        assertTrue(stateOf(cache(daysAgo = 0, lastReadAt = now.minusSeconds(3600))) is WidgetState.Ready)
+    }
+
+    @Test
+    fun `a cached number never confirmed by any read is stale`() {
+        assertTrue(stateOf(cache(daysAgo = 1, lastReadAt = null)) is WidgetState.Stale)
+    }
+
+    @Test
+    fun `the empty state names the app that last wrote a reading`() {
+        // The plan hard coded Samsung Health here and was wrong on the first real phone.
+        val state = stateOf(cache(daysAgo = null, sourcePackage = "com.qingniu.fitindex"))
+                as WidgetState.Unavailable
+        assertEquals(WidgetState.Unavailable.Reason.NoData, state.reason)
+        assertEquals("FitIndex", state.source)
+    }
+
+    @Test
+    fun `the empty state names nothing when no writer has ever been seen`() {
+        val state = stateOf(cache(daysAgo = null)) as WidgetState.Unavailable
+        assertNull(state.source)
     }
 
     @Test

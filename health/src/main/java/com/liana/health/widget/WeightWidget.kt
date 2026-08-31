@@ -154,7 +154,7 @@ private fun WeightWidgetContent(
             // weighed themselves.
             WidgetState.Unavailable.Reason.NoData -> MessageLayout(
                 "No weight yet",
-                "Check Samsung\nHealth sync",
+                state.source?.let { "Check $it\nis syncing" } ?: "Tap for help",
                 surface,
             )
         }
@@ -243,8 +243,9 @@ private fun spokenDescription(state: WidgetState, units: UnitPreference): String
     WidgetState.NeedsPermission -> "Weight permission not granted. Tap to fix."
     is WidgetState.Unavailable -> when (state.reason) {
         WidgetState.Unavailable.Reason.NoProvider -> "Health Connect unavailable. Tap for detail."
-        WidgetState.Unavailable.Reason.NoData ->
-            "No weight in Health Connect. Check Samsung Health sync."
+        WidgetState.Unavailable.Reason.NoData -> state.source
+            ?.let { "No weight in Health Connect. Check $it is syncing." }
+            ?: "No weight in Health Connect. Tap for help."
     }
 }
 

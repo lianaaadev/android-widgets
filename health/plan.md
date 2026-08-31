@@ -296,10 +296,16 @@ Four states, mirroring countdown's:
   string's length in Kotlin before the `Text` is emitted. Cheap to do, invisible until it bites,
   and it bites hardest on exactly the size that shipped for the first time in v1.
 
-"No data at all" deserves its own copy, because on a Samsung phone the overwhelmingly likely cause
-is that **Samsung Health's Health Connect sync is switched off** — and that is invisible from our
-side, indistinguishable from a user who has never weighed themselves. The empty state should name
-the toggle: Samsung Health → Settings → Health Connect → sync on, with Weight ticked.
+"No data at all" deserves its own copy, because the overwhelmingly likely cause is that whichever
+app writes the weight has stopped sharing it with Health Connect — invisible from our side, and
+indistinguishable from a user who has never weighed themselves.
+
+**The empty state must not guess which app that is.** This plan assumed Samsung Health and hard
+coded it into the copy; on the first real phone the writer was a smart-scale app
+(`com.qingniu.fitindex`), so the instructions pointed at an app with nothing to do with it. The
+writer is in the data — `record.metadata.dataOrigin.packageName` — so the copy names whatever last
+wrote a reading, remembered across empty reads precisely because an empty read is when the name is
+needed. With no writer ever seen, the copy stays deliberately general.
 
 ## Build phases
 
@@ -319,15 +325,32 @@ not appear, the fallback is the Samsung Health Data SDK, which is a different pr
 receiver, and the 7-day delta. Rendering from cache only. Pick the numeral size from the formatted
 string's length here rather than discovering it later in lb.
 
-**Phase 3 — Refresh.** WorkManager + changes token + backoff, the background-permission gate, the
-daily tick, resume refresh.
+**Phase 3 — Refresh. Done.** Hourly `PeriodicWorkRequest` as unique work with `KEEP`, gated on the
+background grant and cancelled without it — a backgrounded read without that grant returns nothing
+*silently*, so scheduling anyway would spend quota to learn nothing and could convince the cache
+there is no weight. Changes token persisted in the same DataStore, re-primed on expiry; a quiet
+hour costs one `getChanges` and no record read. `IllegalStateException` — how quota exhaustion
+arrives — maps to `Result.retry()` and WorkManager's exponential backoff, never `failure()` and
+never a tight loop. Daily tick via `:core`'s `WidgetRefreshScheduler`, which redraws the recency
+line without a Health Connect call at all.
+
+*Found while building it:* the app was reading twice per open — once for the record list, once for
+the snapshot — to answer the same question. Now one `readRecords` serves both.
 
 **Phase 4 — Configuration.** Config activity: metric and accent colour, plus pin-to-home-screen via
 `:core`'s `requestPinWidget`. Units are **not** here — kg / lb is one app-wide preference on the
 settings screen, since two widgets in two units is not a thing you want.
 
-**Phase 5 — Polish.** Accessibility (a screen reader must not read out a bare number, same as
-countdown), stale thresholds, empty-state copy, the Samsung Health toggle explainer.
+**Phase 5 — Polish. Done.** Accessibility: the widget already carried a description; the app's
+latest-reading card now merges its four fragments into one spoken sentence, and the accent swatches
+are named — a bare coloured circle announces nothing. Empty-state copy names the real writer (above).
+
+*Staleness turned out to be two thresholds, not one.* A reading goes stale after 14 days, but a
+reading can also be from this morning while every refresh since has quietly failed. `UnconfirmedAfter`
+(2 days) covers that second case: without it the widget would keep presenting this morning's number
+as confirmed when nothing had confirmed it. Generous on purpose — with no background grant the only
+refreshes are app opens, and someone who opens the app twice a week should not face a permanently
+greyed widget.
 
 **Phase 6 — Second metric.** Add one metric of a *different shape* — steps (aggregate) is the
 sharpest test, body fat (latest sample) the easiest. This is what proves or breaks `HealthMetric`.
@@ -366,11 +389,10 @@ Only one of the original five is left. The other four are settled under "Decided
 
 And one the design raised rather than answered:
 
-2. **What counts as stale?** The widget dims and drops its trend past some threshold, but weight is
-   a metric people genuinely stop recording for a fortnight without anything being wrong. Too eager
-   and it looks broken; too patient and it quietly shows a month-old number as current. A fortnight
-   is the guess in the mockup. Worth revisiting in Phase 5 against your own real data rather than
-   deciding now.
+2. **What counts as stale?** Phase 5 shipped two thresholds — 14 days for the reading, 2 days for
+   the last successful read — but both are still guesses. The second is the one to watch: if the
+   background grant is off, it decides how often a working widget looks greyed. Worth a week of
+   living with it before trusting the numbers.
 
 ## Sources
 

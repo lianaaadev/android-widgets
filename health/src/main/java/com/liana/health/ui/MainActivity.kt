@@ -20,8 +20,10 @@ import com.liana.health.data.HealthConnectAvailability
 import com.liana.health.data.HealthConnectSettings
 import com.liana.health.data.HealthPermissionState
 import com.liana.health.widget.WeightWidget
+import com.liana.health.work.RefreshScheduler
 import com.liana.widgets.core.design.WidgetTheme
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -94,21 +96,35 @@ class MainActivity : ComponentActivity() {
             }
 
             if (permission !is HealthPermissionState.Granted) {
+                RefreshScheduler.cancel(this@MainActivity)
                 state = state.copy(permission = permission, loading = false, records = emptyList())
                 return@launch
             }
 
-            val records = repository.readWindow()
-            // refresh() rather than read(): it writes through to the cache the widget renders
-            // from, so opening the app is itself a refresh. Until Phase 3 brings the worker,
-            // this and a reboot are the only things that update a placed widget.
-            val snapshot = repository.refresh()
+            // The background gate. Without that grant a backgrounded read returns nothing
+            // silently rather than failing, so hourly work would spend quota to learn nothing —
+            // and could convince the cache there is no weight. Re-evaluated on every resume,
+            // because the grant can be withdrawn in Health Connect at any time.
+            if (permission.background && permission.backgroundSupported) {
+                RefreshScheduler.schedule(this@MainActivity)
+            } else {
+                RefreshScheduler.cancel(this@MainActivity)
+            }
+
+            // One call: it writes through to the cache the widget renders from, and returns
+            // both the snapshot and the record list from a single readRecords. Opening the app
+            // is itself a refresh, which is the cheap insurance the plan asks for against a
+            // background read that has been quietly failing.
+            val refreshed = repository.refresh()
 
             state = state.copy(
                 permission = permission,
-                records = records.getOrDefault(emptyList()),
-                snapshot = snapshot.getOrNull(),
-                error = (records.exceptionOrNull() ?: snapshot.exceptionOrNull())?.toString(),
+                records = refreshed.getOrNull()?.records.orEmpty(),
+                snapshot = refreshed.getOrNull()?.snapshot,
+                // From the cache, not from this read: an empty read is exactly when the copy
+                // needs a name, and that read has none to give.
+                sourcePackage = repository.cached.first().sourcePackage,
+                error = refreshed.exceptionOrNull()?.toString(),
                 loading = false,
             )
 
