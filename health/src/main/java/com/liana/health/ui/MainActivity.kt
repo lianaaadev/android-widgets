@@ -102,7 +102,7 @@ class MainActivity : ComponentActivity() {
             }
 
             // The background gate. Without that grant a backgrounded read returns nothing
-            // silently rather than failing, so hourly work would spend quota to learn nothing —
+            // silently rather than failing, so the daily work would spend quota to learn nothing —
             // and could convince the cache there is no weight. Re-evaluated on every resume,
             // because the grant can be withdrawn in Health Connect at any time.
             if (permission.background && permission.backgroundSupported) {

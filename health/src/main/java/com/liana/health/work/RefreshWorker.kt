@@ -9,14 +9,14 @@ import com.liana.health.data.HealthConnectAvailability
 import com.liana.health.widget.WeightWidget
 
 /**
- * The hourly background read.
+ * The daily background read.
  *
- * Weight changes once a day at most, and usually less. Anything faster spends quota to display
- * the same number, which matters because Google publishes no numeric rate limits — only that
- * background quotas are stricter than foreground ones, that there are both periodic and daily
- * ceilings, and that apps should back off rather than retry tightly.
+ * Weight changes once a day at most, and usually less, so anything faster spends quota to
+ * display the same number. That matters because Google publishes no numeric rate limits — only
+ * that background quotas are stricter than foreground ones, that there are both periodic and
+ * daily ceilings, and that apps should back off rather than retry tightly.
  *
- * Most runs cost one `getChanges` call and no record read: see
+ * Even this run is usually free of record reads: see
  * [com.liana.health.data.HealthRepository.refreshIfChanged].
  */
 class RefreshWorker(

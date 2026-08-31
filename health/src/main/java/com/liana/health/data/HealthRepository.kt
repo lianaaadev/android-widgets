@@ -115,7 +115,7 @@ class HealthRepository(private val context: Context) {
      *
      * Google publishes no numeric rate limits, only that background quotas are stricter than
      * foreground ones and that apps should prefer changelogs to repeated raw reads. So the
-     * common case — an hourly wake-up on a day nobody stepped on a scale — costs one
+     * common case — a daily wake-up on a day nobody stepped on a scale — costs one
      * `getChanges` call and no record read at all.
      *
      * Returns false when the caller should back off rather than treat this as a clean run.

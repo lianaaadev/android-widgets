@@ -21,7 +21,7 @@ enough that they belong at the top rather than in a footnote.
 | **Units** | kg default, lb the alternative. App-wide. | No stone — it is a compound format (`11 st 5 lb`) that would need its own layout branch. One `UnitPreference` in app-level DataStore, not per-widget state |
 | **Trend** | Yes — a delta only. Latest reading vs. the nearest one **7 days** back | **Room stays out.** A delta needs two values, not a history. See "No Room, and why" |
 | **Cover screen** | v1 | Moves from "after Phase 5" into **Phase 2**, alongside the other two sizes |
-| **Phone** | Android 14+ | `READ_HEALTH_DATA_IN_BACKGROUND` is available, so state 4 below is the target state and hourly background refresh is real |
+| **Phone** | Android 14+ | `READ_HEALTH_DATA_IN_BACKGROUND` is available, so state 4 below is the target state and background refresh is real |
 
 The design canvas for all of this is `mockup/health/` (gitignored, local only), published as
 **Weight Widget**.
@@ -252,9 +252,15 @@ Google publishes no numeric rate limits — only that background limits are stri
 foreground, that there are both periodic and daily quotas, and that apps should prefer changelogs
 over repeated raw reads and back off on `IllegalStateException`. That shapes this directly:
 
-- **`PeriodicWorkRequest`, 1 hour**, enqueued as unique work with `ExistingPeriodicWorkPolicy.KEEP`.
+- **`PeriodicWorkRequest`, 1 day**, enqueued as unique work with `ExistingPeriodicWorkPolicy.KEEP`.
   Weight changes once a day at most; anything faster spends quota to display the same number.
   Skip enqueuing entirely when the background feature is unavailable.
+
+  *This started at one hour and was cut to a day.* Hourly bought nothing: opening the app is
+  itself a full read, and the midnight tick ages the recency line without any read at all, so
+  between background runs the widget is neither wrong nor idle. The only thing an hourly job
+  caught sooner was a weight recorded while the app was closed and never opened since — and that
+  is a widget nobody is looking at.
 - **Changes token, not repeated full reads.** `getChangesToken(ChangesTokenRequest(setOf(WeightRecord::class)))`
   once, persisted; then `getChanges(token)` each run, re-priming when the token expires. This is
   the documented way to stay under quota.
@@ -325,11 +331,11 @@ not appear, the fallback is the Samsung Health Data SDK, which is a different pr
 receiver, and the 7-day delta. Rendering from cache only. Pick the numeral size from the formatted
 string's length here rather than discovering it later in lb.
 
-**Phase 3 — Refresh. Done.** Hourly `PeriodicWorkRequest` as unique work with `KEEP`, gated on the
+**Phase 3 — Refresh. Done.** Daily `PeriodicWorkRequest` as unique work with `KEEP`, gated on the
 background grant and cancelled without it — a backgrounded read without that grant returns nothing
 *silently*, so scheduling anyway would spend quota to learn nothing and could convince the cache
 there is no weight. Changes token persisted in the same DataStore, re-primed on expiry; a quiet
-hour costs one `getChanges` and no record read. `IllegalStateException` — how quota exhaustion
+day costs one `getChanges` and no record read. `IllegalStateException` — how quota exhaustion
 arrives — maps to `Result.retry()` and WorkManager's exponential backoff, never `failure()` and
 never a tight loop. Daily tick via `:core`'s `WidgetRefreshScheduler`, which redraws the recency
 line without a Health Connect call at all.
@@ -377,7 +383,7 @@ domain — the same rule that kept date arithmetic in `:countdown`.
 | Galaxy Watch → phone sync lags on Samsung's own schedule | Always show *when* a value was recorded, never imply "now" |
 | Permission revoked at any time, silently | Cache means the widget degrades to stale rather than blank |
 | Reports of Health Connect revoking read permissions from unused apps | **Unverified** — not in the docs, only community threads. A widget-only app that is rarely opened is exactly the profile at risk. Test by leaving it untouched for a month |
-| Quota exhaustion from over-polling | Changes token + hourly ceiling + backoff |
+| Quota exhaustion from over-polling | Changes token + daily ceiling + backoff |
 | Play Store health-data declaration + privacy policy | Only if published; sideloading sidesteps it |
 
 ## Open questions for you

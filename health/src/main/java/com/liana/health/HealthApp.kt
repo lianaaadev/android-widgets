@@ -18,9 +18,9 @@ class HealthApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        // Costs nothing and touches no health data: it only makes the recency line roll over at
-        // midnight. The hourly read is scheduled separately, and only once the background grant
-        // is confirmed — see MainActivity.
+        // Costs nothing and touches no health data: it only makes the recency line roll over
+        // at midnight. The daily read is scheduled separately, and only once the background
+        // grant is confirmed — see MainActivity.
         DailyTickScheduler.schedule(this)
     }
 }
